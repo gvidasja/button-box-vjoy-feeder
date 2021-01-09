@@ -1,10 +1,14 @@
 # button-box-vjoy-feeder
+
 vJoy feeder app for a custom button-box
 
 ## Installation
 
-open cmd with admin rights and run:
+1. Download the latest release
+2. Download vJoy and put in the same folder as the `.exe`
+3. Run in a console with admin rights:
 
-```
-dotnet run install -c Release
+```cmd
+./button-box-vjoy-feeder.exe install
+./button-box-vjoy-feeder.exe start
 ```
