@@ -1,4 +1,4 @@
-package main
+package service
 
 import (
 	"fmt"
@@ -12,13 +12,23 @@ import (
 	"golang.org/x/sys/windows/svc/mgr"
 )
 
-type service struct {
+type stopHandler func(stoppedEvent chan<- bool, stopCommand <-chan bool)
+
+type srv struct {
 	name        string
 	description string
-	service     func(stoppedEvent chan<- bool, stopCommand <-chan bool)
+	service     stopHandler
 }
 
-func (s *service) Execute(args []string, r <-chan svc.ChangeRequest, changes chan<- svc.Status) (ssec bool, errno uint32) {
+func New(name, description string, service stopHandler) *srv {
+	return &srv{
+		name:        name,
+		description: description,
+		service:     service,
+	}
+}
+
+func (s *srv) Execute(args []string, r <-chan svc.ChangeRequest, changes chan<- svc.Status) (ssec bool, errno uint32) {
 	const cmdsAccepted = svc.AcceptStop | svc.AcceptShutdown | svc.AcceptPauseAndContinue
 	changes <- svc.Status{State: svc.StartPending}
 
@@ -52,25 +62,25 @@ loop:
 	return
 }
 
-func (s *service) runWhenInServiceMode() error {
-	isService, err := svc.IsWindowsService()
+func (s *srv) RunWhenInServiceMode() (isService bool, err error) {
+	isService, err = svc.IsWindowsService()
 
 	if err != nil {
-		return errors.Wrap(err, "Could not check if in service mode")
+		return isService, errors.Wrap(err, "could not check if in service mode")
 	}
 
 	if isService {
 		err := svc.Run(s.name, s)
 
 		if err != nil {
-			return errors.Wrap(err, "Could not run service")
+			return isService, errors.Wrap(err, "could not run service")
 		}
 	}
 
-	return nil
+	return isService, nil
 }
 
-func (s *service) install() error {
+func (s *srv) Install() error {
 	program := os.Args[0]
 	programPath, _ := filepath.Abs(program)
 
@@ -94,7 +104,7 @@ func (s *service) install() error {
 	return nil
 }
 
-func (s *service) remove() error {
+func (s *srv) Remove() error {
 	manager, err := mgr.Connect()
 	if err != nil {
 		return errors.Wrap(err, "Could not connect to service manager")
@@ -115,7 +125,7 @@ func (s *service) remove() error {
 	return nil
 }
 
-func (s *service) start() error {
+func (s *srv) Start() error {
 	manager, err := mgr.Connect()
 	if err != nil {
 		return errors.Wrap(err, "Could not connect to service manager")
@@ -140,7 +150,7 @@ func (s *service) start() error {
 	return nil
 }
 
-func (s *service) control(command svc.Cmd, newState svc.State) error {
+func (s *srv) Control(command svc.Cmd, newState svc.State) error {
 	manager, err := mgr.Connect()
 	if err != nil {
 		return errors.Wrap(err, "Could not connect to service manager")
@@ -162,7 +172,7 @@ func (s *service) control(command svc.Cmd, newState svc.State) error {
 
 	for status.State != newState {
 		if timeout.Before(time.Now()) {
-			return fmt.Errorf("Timeout waiting for service to go to state=%d", newState)
+			return fmt.Errorf("timeout waiting for service to go to state=%d", newState)
 		}
 
 		time.Sleep(300 * time.Millisecond)

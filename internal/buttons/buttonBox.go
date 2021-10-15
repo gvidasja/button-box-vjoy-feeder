@@ -1,10 +1,11 @@
-package main
+package buttons
 
 import (
 	"bufio"
 	"log"
 	"strconv"
 
+	"github.com/gvidasja/button-box-vjoy-feeder/internal/device"
 	"github.com/tarm/serial"
 )
 
@@ -41,8 +42,8 @@ func readButtonsSerialPort(readings chan<- buttonReading) {
 	}
 }
 
-func readButtons(stoppedEvent chan<- bool, stopCommand <-chan bool) {
-	device := NewDeviceWithDelay(1, 10)
+func Service(stoppedEvent chan<- bool, stopCommand <-chan bool) {
+	device := device.NewDeviceWithDelay(1, 10)
 	err := device.Init()
 
 	if err != nil {
@@ -62,10 +63,16 @@ loop:
 			break loop
 		case reading := <-readings:
 			if reading.err != nil {
+				err = reading.err
 				break loop
 			}
+			log.Println("button pressed", reading.buttonID, reading.state)
 			device.SetButton(reading.buttonID, reading.state)
 		}
+	}
+
+	if err != nil {
+		log.Println("reading button value failed", err)
 	}
 
 	stoppedEvent <- true

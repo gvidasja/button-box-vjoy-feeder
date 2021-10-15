@@ -35,7 +35,7 @@ func vJoyEnabled() bool {
 func acquireVJD(deviceID uint) error {
 	acquired, _, _ := procAcquireVJD.Call(uintptr(deviceID))
 	if acquired == 0 {
-		return fmt.Errorf("Could not acquire device %d", deviceID)
+		return fmt.Errorf("could not acquire device %d", deviceID)
 	}
 
 	return nil
@@ -44,7 +44,7 @@ func acquireVJD(deviceID uint) error {
 func relinquishVJD(deviceID uint) error {
 	relinquished, _, _ := procRelinquishVJD.Call(uintptr(deviceID))
 	if relinquished == 0 {
-		return fmt.Errorf("Could not dispose device %d", deviceID)
+		return fmt.Errorf("could not dispose device %d", deviceID)
 	}
 
 	return nil
@@ -68,7 +68,7 @@ func setButton(deviceID uint, buttonID uint, state bool) error {
 	stateWasSet, _, _ := procSetButton.Call(uintptr(stateInt), uintptr(deviceID), uintptr(buttonID))
 
 	if stateWasSet == 0 {
-		return fmt.Errorf("Could not set button %d state to %d on device %d", buttonID, state, deviceID)
+		return fmt.Errorf("could not set button %d state to %v on device %d", buttonID, state, deviceID)
 	}
 
 	return nil
