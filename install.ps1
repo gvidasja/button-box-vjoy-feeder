@@ -1,9 +1,39 @@
-foreach ($item in Get-ChildItem cmd | Where-Object { $_.PsIsContainer -eq $True }) {
-  $name = $item.Name  
-  Write-Host "building $name"
-  go build -o ".\bin\$name.exe" ".\cmd\$name\main.go"
+$currentPrincipal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
+$isAdmin = $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 
-  mkdir -force "C:\bin\$name"
-  cp ".\bin\$name.exe" "C:\bin\$name\$name.exe"
-  cp *.dll "C:\bin\$name\"
+if ($isAdmin) {
+  foreach ($item in Get-ChildItem cmd | Where-Object { $_.PsIsContainer -eq $True }) {
+    $name = $item.Name  
+    Write-Host "building $name"
+    go build -o ".\bin\$name.exe" ".\cmd\$name\main.go"
+  
+    mkdir -force "C:\bin\$name"
+
+    Write-Host "stopping..."
+    Invoke-Expression -ErrorAction Continue "C:\bin\$name\$name.exe stop"
+    Write-Host "stopped"
+
+    Write-Host "uninstalling..."
+    Invoke-Expression -ErrorAction Continue "C:\bin\$name\$name.exe uninstall"
+    Write-Host "uninstalled"
+    
+    Write-Host "copying..."
+    Copy-Item ".\bin\$name.exe" "C:\bin\$name\$name.exe"
+    Copy-Item *.dll "C:\bin\$name\"
+    Write-Host "copied"
+  
+    Write-Host "installing..."
+    Invoke-Expression -ErrorAction Continue "C:\bin\$name\$name.exe install"
+    Write-Host "installed"
+
+    Write-Host "starting..."
+    Invoke-Expression -ErrorAction Continue "C:\bin\$name\$name.exe start"
+    Write-Host "started"
+
+    Read-Host "Press any key to continue..."
+  }
+}
+else {
+  $myPath = Get-Location
+  Start-Process -FilePath powershell -verb runas -ArgumentList "-NoExit Set-Location $myPath ; $myPath\install.ps1"
 }
