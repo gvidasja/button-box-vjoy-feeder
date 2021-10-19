@@ -15,6 +15,7 @@ import (
 
 func main() {
 	log.SetFile("C:\\logs\\button-box-vjoy-feeder.log")
+	defer log.Close()
 
 	service := service.New("button-box-vjoy-feeded", "button-box-vjoy-feeded", buttons.Service)
 

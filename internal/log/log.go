@@ -6,10 +6,13 @@ import (
 	"os"
 )
 
-var debug bool = false
+var (
+	debug   bool = false
+	logFile io.WriteCloser
+)
 
 func SetFile(path string) {
-	logFile, _ := os.OpenFile(path, os.O_WRONLY|os.O_APPEND|os.O_CREATE, os.ModePerm)
+	logFile, _ = os.OpenFile(path, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
 	log.SetOutput(io.MultiWriter(logFile, os.Stdout))
 }
 
@@ -33,6 +36,10 @@ func Debug(v ...interface{}) {
 
 func Panic(v ...interface{}) {
 	log.Panic(v...)
+}
+
+func Close() {
+	logFile.Close()
 }
 
 func logWithLevel(l level, v ...interface{}) {
