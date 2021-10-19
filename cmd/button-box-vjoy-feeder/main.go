@@ -2,21 +2,19 @@ package main
 
 import (
 	"fmt"
-	"io"
-	"log"
 	"os"
 	"os/signal"
 	"strings"
 
 	"github.com/gvidasja/button-box-vjoy-feeder/internal/buttons"
+	"github.com/gvidasja/button-box-vjoy-feeder/internal/log"
 	"github.com/gvidasja/button-box-vjoy-feeder/internal/service"
 	"github.com/pkg/errors"
 	"golang.org/x/sys/windows/svc"
 )
 
 func main() {
-	logFile, _ := os.OpenFile("C:\\logs\\button-box-vjoy-feeder.log", os.O_WRONLY|os.O_APPEND|os.O_CREATE, os.ModePerm)
-	log.SetOutput(io.MultiWriter(logFile, os.Stdout))
+	log.SetFile("C:\\logs\\button-box-vjoy-feeder.log")
 
 	service := service.New("button-box-vjoy-feeded", "button-box-vjoy-feeded", buttons.Service)
 
@@ -29,6 +27,8 @@ func main() {
 	if isService {
 		return
 	}
+
+	log.SetDebug(true)
 
 	if len(os.Args) < 2 {
 		cmdDoc := func(cmd command, desc string) string {
@@ -77,11 +77,11 @@ func main() {
 		<-signals
 		done <- true
 	default:
-		err = errors.Errorf("unkown command", cmd)
+		err = errors.Errorf("unkown command: %s", cmd)
 	}
 
 	if err != nil {
-		log.Panicf("could not perform control command: %s. %v", cmd, err)
+		log.Panic("could not perform control command:", cmd, ". ", err)
 	}
 }
 

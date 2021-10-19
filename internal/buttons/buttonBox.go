@@ -2,44 +2,64 @@ package buttons
 
 import (
 	"bufio"
-	"log"
 	"strconv"
+	"time"
 
 	"github.com/gvidasja/button-box-vjoy-feeder/internal/device"
+	"github.com/gvidasja/button-box-vjoy-feeder/internal/log"
 	"github.com/tarm/serial"
 )
 
 type buttonReading struct {
 	buttonID uint
 	state    bool
-	err      error
 }
 
-func readButtonsSerialPort(readings chan<- buttonReading) {
+func getScanner() (*bufio.Scanner, error) {
 	c := &serial.Config{Name: "COM15", Baud: 9600}
 
 	port, err := serial.OpenPort(c)
 
 	if err != nil {
-		readings <- buttonReading{err: err}
+		log.Error("could not connect to port COM15: ", err)
+		return nil, err
 	}
 
-	scanner := bufio.NewScanner(port)
+	return bufio.NewScanner(port), nil
+}
 
-	for {
-		if !scanner.Scan() {
-			if err := scanner.Err(); err != nil {
-				log.Fatal(err)
-				readings <- buttonReading{err: err}
-				return
+func readButtonsSerialPort() <-chan buttonReading {
+	readings := make(chan buttonReading)
+
+	go func() {
+		for {
+			scanner, err := getScanner()
+
+			if err != nil {
+				log.Error("could not connect to port COM15:", err)
+				time.Sleep(time.Second)
+				continue
+			}
+
+			for {
+				if !scanner.Scan() {
+					if err := scanner.Err(); err != nil {
+						log.Error(err)
+						time.Sleep(time.Second)
+						break
+					}
+				}
+
+				serialString := scanner.Text()
+				actionNumber, _ := strconv.ParseInt(serialString[0:1], 10, 64)
+				button, _ := strconv.ParseInt(serialString[1:], 10, 64)
+
+				readings <- buttonReading{buttonID: uint(button), state: actionNumber > 0}
 			}
 		}
-		serialString := scanner.Text()
-		actionNumber, _ := strconv.ParseInt(serialString[0:1], 10, 64)
-		button, _ := strconv.ParseInt(serialString[1:], 10, 64)
+	}()
 
-		readings <- buttonReading{buttonID: uint(button), state: actionNumber > 0}
-	}
+	return readings
 }
 
 func Service(stoppedEvent chan<- bool, stopCommand <-chan bool) {
@@ -47,14 +67,12 @@ func Service(stoppedEvent chan<- bool, stopCommand <-chan bool) {
 	err := device.Init()
 
 	if err != nil {
-		log.Fatal(err)
+		log.Panic("could not connect to vjoy device:", err)
 		stoppedEvent <- true
 		return
 	}
 
-	readings := make(chan buttonReading)
-
-	go readButtonsSerialPort(readings)
+	readings := readButtonsSerialPort()
 
 loop:
 	for {
@@ -62,17 +80,9 @@ loop:
 		case <-stopCommand:
 			break loop
 		case reading := <-readings:
-			if reading.err != nil {
-				err = reading.err
-				break loop
-			}
-			log.Println("button pressed", reading.buttonID, reading.state)
+			log.Debug("button pressed", reading.buttonID, reading.state)
 			device.SetButton(reading.buttonID, reading.state)
 		}
-	}
-
-	if err != nil {
-		log.Println("reading button value failed", err)
 	}
 
 	stoppedEvent <- true
