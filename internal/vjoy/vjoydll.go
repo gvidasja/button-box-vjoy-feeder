@@ -3,6 +3,8 @@ package vjoy
 import (
 	"fmt"
 	"syscall"
+
+	"github.com/gvidasja/button-box-vjoy-feeder/internal/device"
 )
 
 var vjoyDll = syscall.NewLazyDLL("vJoyInterface.dll")
@@ -56,7 +58,7 @@ func getVJDStatus(deviceID uint) int {
 	return int(status)
 }
 
-func setButton(deviceID uint, buttonID uint, state bool) error {
+func setButton(deviceID uint, buttonID device.ButtonID, state bool) error {
 	var stateInt uintptr
 
 	if state {

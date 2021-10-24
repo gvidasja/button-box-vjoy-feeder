@@ -2,31 +2,27 @@ package vjoy
 
 import (
 	"fmt"
+
+	"github.com/gvidasja/button-box-vjoy-feeder/internal/device"
 )
 
-type Device interface {
-	Init() error
-	Dispose() error
-	SetButton(buttonID uint, state bool) error
-}
-
-type device struct {
+type vjoyDevice struct {
 	id uint
 }
 
-func NewDevice(id uint) *device {
-	return &device{id}
+func NewDevice(id uint) *vjoyDevice {
+	return &vjoyDevice{id}
 }
 
-func (d *device) Dispose() error {
+func (d *vjoyDevice) Dispose() error {
 	return relinquishVJD(d.id)
 }
 
-func (d *device) SetButton(buttonID uint, state bool) error {
+func (d *vjoyDevice) SetButton(buttonID device.ButtonID, state bool) error {
 	return setButton(d.id, buttonID, state)
 }
 
-func (d *device) Init() error {
+func (d *vjoyDevice) Init() error {
 	load()
 
 	err := validateJoystick(d.id)

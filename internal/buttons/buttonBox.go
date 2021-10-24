@@ -6,26 +6,53 @@ import (
 	"time"
 
 	"github.com/gvidasja/button-box-vjoy-feeder/internal/device"
-	"github.com/gvidasja/button-box-vjoy-feeder/internal/log"
+	"github.com/gvidasja/button-box-vjoy-feeder/internal/vjoy"
+	"github.com/gvidasja/windowsservice"
+	log "github.com/sirupsen/logrus"
 	"github.com/tarm/serial"
 )
 
-type buttonReading struct {
-	buttonID uint
-	state    bool
-}
-
-func getScanner() (*bufio.Scanner, error) {
-	c := &serial.Config{Name: "COM15", Baud: 9600}
-
-	port, err := serial.OpenPort(c)
-
-	if err != nil {
-		log.Error("could not connect to port COM15: ", err)
-		return nil, err
+func Service(s windowsservice.Service) {
+	if s.IsInServiceMode() {
+		log.SetLevel(log.InfoLevel)
+	} else {
+		log.SetLevel(log.DebugLevel)
 	}
 
-	return bufio.NewScanner(port), nil
+	vjoyDevice := vjoy.NewDevice(1)
+	err := vjoyDevice.Init()
+
+	if err != nil {
+		log.Panic("could not connect to vjoy device:", err)
+		s.StopService()
+		return
+	}
+
+	device := device.New(vjoyDevice, device.DeviceConfig{
+		MinimumButtonPressDuration: time.Millisecond * 20,
+	})
+
+	readings := readButtonsSerialPort()
+loop:
+	for {
+		select {
+		case <-s.StopCommandReceived():
+			break loop
+		case reading := <-readings:
+			log.Debugf("button %v: %v", reading.buttonID, reading.state)
+
+			buttonID := reading.getButtonID()
+
+			if deviceButtonID, ok := keyMap[buttonID]; ok {
+				log.Debugf("sending %v -> %v", buttonID, deviceButtonID)
+				device.SetButton(deviceButtonID, reading.state)
+			}
+		}
+	}
+
+	vjoyDevice.Dispose()
+
+	s.StopService()
 }
 
 func readButtonsSerialPort() <-chan buttonReading {
@@ -54,7 +81,7 @@ func readButtonsSerialPort() <-chan buttonReading {
 				actionNumber, _ := strconv.ParseInt(serialString[0:1], 10, 64)
 				button, _ := strconv.ParseInt(serialString[1:], 10, 64)
 
-				readings <- buttonReading{buttonID: uint(button), state: actionNumber > 0}
+				readings <- buttonReading{buttonID: buttonID(button), state: actionNumber > 0}
 			}
 		}
 	}()
@@ -62,28 +89,15 @@ func readButtonsSerialPort() <-chan buttonReading {
 	return readings
 }
 
-func Service(stoppedEvent chan<- bool, stopCommand <-chan bool) {
-	device := device.NewDeviceWithDelay(1, 10)
-	err := device.Init()
+func getScanner() (*bufio.Scanner, error) {
+	c := &serial.Config{Name: "COM15", Baud: 9600}
+
+	port, err := serial.OpenPort(c)
 
 	if err != nil {
-		log.Panic("could not connect to vjoy device:", err)
-		stoppedEvent <- true
-		return
+		log.Error("could not connect to port COM15: ", err)
+		return nil, err
 	}
 
-	readings := readButtonsSerialPort()
-
-loop:
-	for {
-		select {
-		case <-stopCommand:
-			break loop
-		case reading := <-readings:
-			log.Debug("button pressed", reading.buttonID, reading.state)
-			device.SetButton(reading.buttonID, reading.state)
-		}
-	}
-
-	stoppedEvent <- true
+	return bufio.NewScanner(port), nil
 }
