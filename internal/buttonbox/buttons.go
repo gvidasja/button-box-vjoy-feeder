@@ -1,4 +1,4 @@
-package buttons
+package buttonbox
 
 type buttonID uint
 

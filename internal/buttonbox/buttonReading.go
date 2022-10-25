@@ -1,8 +1,16 @@
-package buttons
+package buttonbox
+
+import "strconv"
 
 type buttonReading struct {
 	buttonID buttonID
 	state    bool
+}
+
+func parseButtonReading(serialString string) buttonReading {
+	actionNumber, _ := strconv.ParseInt(serialString[0:1], 10, 64)
+	button, _ := strconv.ParseInt(serialString[1:], 10, 64)
+	return buttonReading{buttonID: buttonID(button), state: actionNumber > 0}
 }
 
 func (reading buttonReading) getButtonID() buttonID {

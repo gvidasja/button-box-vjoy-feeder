@@ -4,34 +4,47 @@ import (
 	"fmt"
 
 	"github.com/gvidasja/button-box-vjoy-feeder/internal/device"
+	"github.com/gvidasja/button-box-vjoy-feeder/internal/windowsservice"
+	log "github.com/sirupsen/logrus"
 )
 
 type vjoyDevice struct {
 	id uint
 }
 
+var _ device.Device = (*vjoyDevice)(nil)
+var _ windowsservice.Service = (*vjoyDevice)(nil)
+
 func NewDevice(id uint) *vjoyDevice {
 	return &vjoyDevice{id}
 }
 
-func (d *vjoyDevice) Dispose() error {
-	return relinquishVJD(d.id)
+func (d *vjoyDevice) Start() error {
+	if err := loadVJoyDLL(); err != nil {
+		return fmt.Errorf("cannot load vJoy DLL: %w", err)
+	}
+
+	if err := validateJoystick(d.id); err != nil {
+		return fmt.Errorf("invalid Joystick: %w", err)
+	}
+
+	if err := acquireVJD(d.id); err != nil {
+		return fmt.Errorf("cannot acquire VJD %w", err)
+	}
+
+	return nil
+}
+
+func (d *vjoyDevice) Stop() {
+	err := relinquishVJD(d.id)
+
+	if err != nil {
+		log.Errorf("could not relinquish VJD: %w", err)
+	}
 }
 
 func (d *vjoyDevice) SetButton(buttonID device.ButtonID, state bool) error {
 	return setButton(d.id, buttonID, state)
-}
-
-func (d *vjoyDevice) Init() error {
-	load()
-
-	err := validateJoystick(d.id)
-
-	if err != nil {
-		return err
-	}
-
-	return acquireVJD(d.id)
 }
 
 func validateJoystick(deviceID uint) error {

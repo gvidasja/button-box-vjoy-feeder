@@ -2,10 +2,13 @@ package vjoy
 
 import (
 	"fmt"
+	"sync"
 	"syscall"
 
 	"github.com/gvidasja/button-box-vjoy-feeder/internal/device"
 )
+
+var lock sync.Once
 
 var vjoyDll = syscall.NewLazyDLL("vJoyInterface.dll")
 
@@ -25,8 +28,10 @@ const (
 	VJD_STAT_UNKN
 )
 
-func load() error {
-	return vjoyDll.Load()
+func loadVJoyDLL() error {
+	var err error
+	lock.Do(func() { err = vjoyDll.Load() })
+	return err
 }
 
 func vJoyEnabled() bool {

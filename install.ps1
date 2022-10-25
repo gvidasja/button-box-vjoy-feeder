@@ -6,28 +6,25 @@ if ($isAdmin) {
     $name = $item.Name  
     Write-Host "building $name"
     go build -o ".\bin\$name.exe" ".\cmd\$name\main.go"
-  
-    mkdir -force "C:\bin\$name"
 
     Write-Host "stopping..."
-    Invoke-Expression -ErrorAction Continue "C:\bin\$name\$name.exe stop"
+    Invoke-Expression -ErrorAction Continue ".\bin\$name.exe stop"
     Write-Host "stopped"
 
     Write-Host "uninstalling..."
-    Invoke-Expression -ErrorAction Continue "C:\bin\$name\$name.exe uninstall"
+    Invoke-Expression -ErrorAction Continue ".\bin\$name.exe uninstall"
     Write-Host "uninstalled"
     
     Write-Host "copying..."
-    Copy-Item ".\bin\$name.exe" "C:\bin\$name\$name.exe"
-    Copy-Item *.dll "C:\bin\$name\"
+    Copy-Item *.dll ".\bin"
     Write-Host "copied"
   
     Write-Host "installing..."
-    Invoke-Expression -ErrorAction Continue "C:\bin\$name\$name.exe install"
+    Invoke-Expression -ErrorAction Continue ".\bin\$name.exe install"
     Write-Host "installed"
 
     Write-Host "starting..."
-    Invoke-Expression -ErrorAction Continue "C:\bin\$name\$name.exe start"
+    Invoke-Expression -ErrorAction Continue ".\bin\$name.exe start"
     Write-Host "started"
 
     Read-Host "Press any key to continue..."

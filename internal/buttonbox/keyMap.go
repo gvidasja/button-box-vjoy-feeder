@@ -1,4 +1,4 @@
-package buttons
+package buttonbox
 
 import "github.com/gvidasja/button-box-vjoy-feeder/internal/device"
 
