@@ -5,33 +5,45 @@ import (
 	"golang.org/x/sys/windows/svc"
 )
 
-type handler struct {
-	service *cli
+type StarStopper interface {
+	Start() error
+	Stop()
 }
 
-func (s *handler) Execute(args []string, r <-chan svc.ChangeRequest, changes chan<- svc.Status) (ssec bool, errno uint32) {
+type Handler struct {
+	service StarStopper
+}
+
+func NewHandler(s StarStopper) *Handler {
+	return &Handler{service: s}
+}
+
+func (s *Handler) Execute(args []string, r <-chan svc.ChangeRequest, changes chan<- svc.Status) (ssec bool, errno uint32) {
 	const cmdsAccepted = svc.AcceptStop | svc.AcceptShutdown
 	changes <- svc.Status{State: svc.StartPending}
 
 	changes <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
 
-	err := s.service.start()
+	err := s.service.Start()
 
 	if err != nil {
 		changes <- svc.Status{State: svc.StopPending}
 		return
 	}
 
+main:
 	for c := range r {
 		log.Infof("service status request: %v", c.Cmd)
 		switch c.Cmd {
 		case svc.Interrogate:
 			changes <- c.CurrentStatus
 		case svc.Stop, svc.Shutdown:
-			s.service.stop()
+			changes <- svc.Status{State: svc.StopPending}
+			s.service.Stop()
+			changes <- svc.Status{State: svc.Stopped}
+			break main
 		}
 	}
 
-	changes <- svc.Status{State: svc.StopPending}
 	return
 }

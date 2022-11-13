@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gvidasja/button-box-vjoy-feeder/internal/windowsservice"
+	"github.com/gvidasja/button-box-vjoy-feeder/internal/app"
 	log "github.com/sirupsen/logrus"
 	"github.com/tarm/serial"
 )
@@ -21,13 +21,14 @@ type Consumer struct {
 	handler Handler
 }
 
-var _ windowsservice.Service = (*Consumer)(nil)
+var _ app.Worker = (*Consumer)(nil)
 
 func NewConsumer(ports []int, handler Handler) *Consumer {
 	return &Consumer{ports: ports, handler: handler}
 }
 
 func (c *Consumer) Start() error {
+	c.done = make(chan bool)
 	readings := make(chan string)
 
 	go func() {

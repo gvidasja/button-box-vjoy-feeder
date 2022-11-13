@@ -3,8 +3,8 @@ package vjoy
 import (
 	"fmt"
 
+	"github.com/gvidasja/button-box-vjoy-feeder/internal/app"
 	"github.com/gvidasja/button-box-vjoy-feeder/internal/device"
-	"github.com/gvidasja/button-box-vjoy-feeder/internal/windowsservice"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -13,7 +13,7 @@ type vjoyDevice struct {
 }
 
 var _ device.Device = (*vjoyDevice)(nil)
-var _ windowsservice.Service = (*vjoyDevice)(nil)
+var _ app.Worker = (*vjoyDevice)(nil)
 
 func NewDevice(id uint) *vjoyDevice {
 	return &vjoyDevice{id}
