@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/gvidasja/button-box-vjoy-feeder/internal/app"
-	"github.com/gvidasja/button-box-vjoy-feeder/internal/appender"
 	"github.com/gvidasja/button-box-vjoy-feeder/internal/buttonbox"
 	"github.com/gvidasja/button-box-vjoy-feeder/internal/device"
 	"github.com/gvidasja/button-box-vjoy-feeder/internal/serial"
@@ -15,9 +14,8 @@ import (
 )
 
 func main() {
-	file := appender.ForFile(`E:\dev\button-box-vjoy-feeder\button-box-vjoy-feeder.log`)
-
-	log.SetOutput(io.MultiWriter(os.Stdout, file))
+	logFile, _ := os.OpenFile(`E:\dev\button-box-vjoy-feeder\button-box-vjoy-feeder.log`, os.O_WRONLY|os.O_CREATE, 0666)
+	log.SetOutput(io.MultiWriter(logFile, os.Stdout))
 	log.SetLevel(log.DebugLevel)
 
 	vjoyDevice := vjoy.NewDevice(1)
