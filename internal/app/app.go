@@ -68,6 +68,7 @@ func (s *App) runStandalone() {
 }
 
 func (c *App) Start() error {
+	log.Debug("starting...")
 	for _, service := range c.services {
 		err := service.Start()
 
@@ -75,12 +76,15 @@ func (c *App) Start() error {
 			return fmt.Errorf("could not run service: %w", err)
 		}
 	}
+	log.Debug("started")
 
 	return nil
 }
 
 func (c *App) Stop() {
+	log.Debug("stopping...")
 	for i := len(c.services) - 1; i >= 0; i-- {
 		c.services[i].Stop()
 	}
+	log.Debug("stopped")
 }

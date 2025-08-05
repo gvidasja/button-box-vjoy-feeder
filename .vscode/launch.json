@@ -1,12 +1,20 @@
 {
-    "configurations": [
-        {
-            "name": "run",
-            "type": "go",
-            "request": "launch",
-            "mode": "auto",
-            "program": "${workspaceFolder}/cmd/button-box-vjoy-feeder/main.go",
-            "args": ["run"]
-        }
-    ]
+  "configurations": [
+    {
+      "name": "run service",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/cmd/button-box-vjoy-feeder/main.go",
+      "args": ["run"]
+    },
+    {
+      "name": "run file",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${file}",
+      "args": ["run"]
+    }
+  ]
 }

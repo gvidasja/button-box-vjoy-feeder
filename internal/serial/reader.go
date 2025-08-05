@@ -2,7 +2,6 @@ package serial
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"time"
 
@@ -15,25 +14,31 @@ type Handler interface {
 	Handle(reading string)
 }
 
+type HandlerFunc func(reading string)
+
+func (f HandlerFunc) Handle(reading string) {
+	f(reading)
+}
+
 type Consumer struct {
 	done    chan bool
-	ports   []int
+	port    int
 	handler Handler
 }
 
 var _ app.Worker = (*Consumer)(nil)
 
-func NewConsumer(ports []int, handler Handler) *Consumer {
-	return &Consumer{ports: ports, handler: handler}
+func NewConsumer(port int, handler Handler) *Consumer {
+	return &Consumer{port: port, handler: handler}
 }
 
 func (c *Consumer) Start() error {
 	c.done = make(chan bool)
-	readings := make(chan string)
+	eof := false
 
 	go func() {
-		for {
-			scanner, err := c.getScanner()
+		for !eof {
+			port, err := c.getPort()
 
 			if err != nil {
 				log.Error(err)
@@ -43,10 +48,12 @@ func (c *Consumer) Start() error {
 
 			startTime := time.Now()
 
-			for {
+			scanner := bufio.NewScanner(port)
+
+			for !eof {
 				if !scanner.Scan() {
 					if err := scanner.Err(); err != nil {
-						log.Error(err)
+						log.Errorf("scanner err: %v", err)
 						time.Sleep(time.Second)
 						break
 					}
@@ -59,21 +66,17 @@ func (c *Consumer) Start() error {
 					continue
 				}
 
-				readings <- reading
-			}
-		}
-	}()
-
-	go (func() {
-		for {
-			select {
-			case <-c.done:
-				return
-			case reading := <-readings:
 				c.handler.Handle(reading)
 			}
 		}
-	})()
+
+		log.Info("EOF")
+	}()
+
+	go func() {
+		<-c.done
+		eof = true
+	}()
 
 	return nil
 }
@@ -82,20 +85,17 @@ func (c *Consumer) Stop() {
 	c.done <- true
 }
 
-func (c *Consumer) getScanner() (*bufio.Scanner, error) {
-	for _, port := range c.ports {
-		portName := fmt.Sprintf("COM%d", port)
+func (c *Consumer) getPort() (*serial.Port, error) {
+	portName := fmt.Sprintf("COM%d", c.port)
 
-		c := &serial.Config{Name: portName, Baud: 9600}
+	cfg := &serial.Config{Name: portName, Baud: 9600}
 
-		port, err := serial.OpenPort(c)
+	port, err := serial.OpenPort(cfg)
 
-		if err != nil {
-			log.Errorf("could not connect to port %v: %w", portName, err)
-		} else {
-			return bufio.NewScanner(port), nil
-		}
+	if err != nil {
+		log.Errorf("could not connect to port %v: %w", portName, err)
 	}
 
-	return nil, errors.New("no port found")
+	log.Infof("using port %s", portName)
+	return port, nil
 }

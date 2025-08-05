@@ -19,7 +19,7 @@ func NewHandler(s StarStopper) *Handler {
 }
 
 func (s *Handler) Execute(args []string, r <-chan svc.ChangeRequest, changes chan<- svc.Status) (ssec bool, errno uint32) {
-	const cmdsAccepted = svc.AcceptStop | svc.AcceptShutdown
+	const cmdsAccepted = svc.AcceptStop | svc.AcceptShutdown | svc.AcceptPowerEvent | svc.AcceptHardwareProfileChange
 	changes <- svc.Status{State: svc.StartPending}
 
 	changes <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
@@ -37,6 +37,8 @@ main:
 		switch c.Cmd {
 		case svc.Interrogate:
 			changes <- c.CurrentStatus
+		case svc.PowerEvent:
+			changes <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
 		case svc.Stop, svc.Shutdown:
 			changes <- svc.Status{State: svc.StopPending}
 			s.service.Stop()

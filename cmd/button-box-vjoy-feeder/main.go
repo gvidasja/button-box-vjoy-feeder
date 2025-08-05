@@ -14,9 +14,11 @@ import (
 )
 
 func main() {
-	logFile, _ := os.OpenFile(`E:\dev\button-box-vjoy-feeder\button-box-vjoy-feeder.log`, os.O_WRONLY|os.O_CREATE, 0666)
+	logFile, _ := os.OpenFile(`E:\dev\button-box-vjoy-feeder\button-box-vjoy-feeder.log`, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 	log.SetOutput(io.MultiWriter(logFile, os.Stdout))
 	log.SetLevel(log.DebugLevel)
+
+	log.Infof("working dir: %s", getWorkingDir())
 
 	vjoyDevice := vjoy.NewDevice(1)
 
@@ -26,6 +28,15 @@ func main() {
 
 	app.
 		New("button-box-vjoy-feeded").
-		AddWorkers(vjoyDevice, serial.NewConsumer([]int{3, 15}, buttonBoxHandler)).
+		AddWorkers(vjoyDevice, serial.NewConsumer(3, buttonBoxHandler)).
 		Run()
+}
+
+type Settings struct {
+	Port int `json:"port"`
+}
+
+func getWorkingDir() string {
+	workingDir, _ := os.Getwd()
+	return workingDir
 }
