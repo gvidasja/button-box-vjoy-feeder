@@ -14,6 +14,7 @@ var vjoyDll = syscall.NewLazyDLL("vJoyInterface.dll")
 
 var (
 	procSetButton     = vjoyDll.NewProc("SetBtn")
+	procSetAxis       = vjoyDll.NewProc("SetAxis")
 	procRelinquishVJD = vjoyDll.NewProc("RelinquishVJD")
 	procAcquireVJD    = vjoyDll.NewProc("AcquireVJD")
 	procVJoyEnabled   = vjoyDll.NewProc("vJoyEnabled")
@@ -76,6 +77,16 @@ func setButton(deviceID uint, buttonID device.ButtonID, state bool) error {
 
 	if stateWasSet == 0 {
 		return fmt.Errorf("could not set button %d state to %v on device %d", buttonID, state, deviceID)
+	}
+
+	return nil
+}
+
+func setAxis(deviceID uint, axis device.AxisID, value int32) error {
+	stateWasSet, _, _ := procSetAxis.Call(uintptr(value), uintptr(deviceID), uintptr(axis))
+
+	if stateWasSet == 0 {
+		return fmt.Errorf("could not set axis %d value to %d on device %d", axis, value, deviceID)
 	}
 
 	return nil

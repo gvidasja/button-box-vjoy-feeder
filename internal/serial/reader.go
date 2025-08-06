@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gvidasja/button-box-vjoy-feeder/internal/app"
 	log "github.com/sirupsen/logrus"
 	"github.com/tarm/serial"
 )
@@ -25,8 +24,6 @@ type Consumer struct {
 	port    int
 	handler Handler
 }
-
-var _ app.Worker = (*Consumer)(nil)
 
 func NewConsumer(port int, handler Handler) *Consumer {
 	return &Consumer{port: port, handler: handler}

@@ -1,6 +1,9 @@
 package device
 
-type ButtonID uint
+type (
+	ButtonID uint
+	AxisID   uint
+)
 
 const (
 	Enc1Neg    = ButtonID(1)

@@ -2,31 +2,27 @@ package buttonbox
 
 import (
 	"github.com/gvidasja/button-box-vjoy-feeder/internal/device"
+	"github.com/gvidasja/button-box-vjoy-feeder/internal/events"
 	"github.com/gvidasja/button-box-vjoy-feeder/internal/serial"
 	log "github.com/sirupsen/logrus"
 )
 
-type Handler struct {
-	device device.Device
-}
+func NewHandler(device device.Device, producer events.Producer) serial.Handler {
+	return serial.HandlerFunc(func(message string) {
 
-var _ serial.Handler = (*Handler)(nil)
+		reading := parseButtonReading(message)
 
-func NewHandler(d device.Device) *Handler {
-	return &Handler{
-		device: d,
-	}
-}
+		log.Debugf("button %v: %v", reading.buttonID, reading.state)
 
-func (h *Handler) Handle(message string) {
-	reading := parseButtonReading(message)
+		buttonID := reading.getButtonID()
 
-	log.Debugf("button %v: %v", reading.buttonID, reading.state)
+		if deviceButtonID, ok := keyMap[buttonID]; ok {
+			log.Debugf("sending %v -> %v", buttonID, deviceButtonID)
+			device.SetButton(deviceButtonID, reading.state)
 
-	buttonID := reading.getButtonID()
-
-	if deviceButtonID, ok := keyMap[buttonID]; ok {
-		log.Debugf("sending %v -> %v", buttonID, deviceButtonID)
-		h.device.SetButton(deviceButtonID, reading.state)
-	}
+			if reading.state {
+				producer.Produce("button", deviceButtonID)
+			}
+		}
+	})
 }

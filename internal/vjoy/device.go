@@ -3,7 +3,6 @@ package vjoy
 import (
 	"fmt"
 
-	"github.com/gvidasja/button-box-vjoy-feeder/internal/app"
 	"github.com/gvidasja/button-box-vjoy-feeder/internal/device"
 	log "github.com/sirupsen/logrus"
 )
@@ -13,7 +12,6 @@ type vjoyDevice struct {
 }
 
 var _ device.Device = (*vjoyDevice)(nil)
-var _ app.Worker = (*vjoyDevice)(nil)
 
 func NewDevice(id uint) *vjoyDevice {
 	return &vjoyDevice{id}
@@ -39,12 +37,16 @@ func (d *vjoyDevice) Stop() {
 	err := relinquishVJD(d.id)
 
 	if err != nil {
-		log.Errorf("could not relinquish VJD: %w", err)
+		log.Errorf("could not relinquish VJD: %v", err)
 	}
 }
 
 func (d *vjoyDevice) SetButton(buttonID device.ButtonID, state bool) error {
 	return setButton(d.id, buttonID, state)
+}
+
+func (d *vjoyDevice) SetAxis(axisID device.AxisID, value int32) error {
+	return setAxis(d.id, axisID, value)
 }
 
 func validateJoystick(deviceID uint) error {

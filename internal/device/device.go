@@ -12,6 +12,7 @@ type deviceWithDelay struct {
 
 type Device interface {
 	SetButton(ButtonID, bool) error
+	SetAxis(AxisID, int32) error
 }
 
 type DeviceConfig struct {
@@ -36,7 +37,7 @@ func (d *deviceWithDelay) SetButton(buttonID ButtonID, state bool) error {
 			return err
 		}
 
-		<-time.NewTimer(d.cfg.MinimumButtonPressDuration).C
+		<-time.After(d.cfg.MinimumButtonPressDuration)
 		return d.device.SetButton(buttonID, false)
 	}
 
@@ -45,8 +46,12 @@ func (d *deviceWithDelay) SetButton(buttonID ButtonID, state bool) error {
 	}
 
 	if lastPress, ok := d.pressMap[buttonID]; !state && ok && now.Before(lastPress.Add(d.cfg.MinimumButtonPressDuration)) {
-		<-time.NewTimer(d.cfg.MinimumButtonPressDuration).C
+		<-time.After(d.cfg.MinimumButtonPressDuration)
 	}
 
 	return d.device.SetButton(buttonID, state)
+}
+
+func (d *deviceWithDelay) SetAxis(axisID AxisID, value int32) error {
+	return d.device.SetAxis(axisID, value)
 }
