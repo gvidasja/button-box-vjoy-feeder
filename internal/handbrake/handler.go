@@ -12,7 +12,7 @@ import (
 
 const (
 	handbrakeMin = (100)
-	handbrakeMax = (1000)
+	handbrakeMax = (1024)
 	vjoyMin      = (0)
 	vjoyMax      = (math.MaxInt32)
 

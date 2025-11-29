@@ -1,11 +1,18 @@
 import { Events, WML } from '@wailsio/runtime'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 type HanbrakeState = {
   min: number
   max: number
   state: number
 }
+
+const BUTTONS = [
+  [[1, 2], [9], [13], [17], [21, 22]],
+  [[3, 4], [10], [14], [18], [23, 24]],
+  [[5, 6], [11], [15], [19], [25, 26]],
+  [[7, 8], [12], [16], [20], [27, 28]],
+]
 
 function App() {
   const [hanbrake, setHanbrake] = useState<HanbrakeState>({ min: 0, max: 1, state: 0 })
@@ -27,10 +34,11 @@ function App() {
     <div>
       <div>
         <div>
-          <span>Hanbrake</span>
-          <span>
+          <div>Hanbrake</div>
+          <div>
             {hanbrake.min} {hanbrake.state} {hanbrake.max}
-          </span>
+          </div>
+          <div>0 {(hanbrake.state / hanbrake.max).toFixed(2)} 1</div>
         </div>
         <div>
           <progress max={hanbrake.max} value={hanbrake.state - hanbrake.min}></progress>
@@ -42,22 +50,49 @@ function App() {
           <span>{button}</span>
         </div>
         <div>
-          {Array.from({ length: 32 }, (_, i) => (
-            <div
-              key={i}
-              style={{
-                display: 'inline-block',
-                border: '1px solid black',
-                textAlign: 'center',
-                width: 20,
-                background: button === i ? 'red' : 'white',
-              }}
-            >
-              {i + 1}
+          <div></div>
+          {BUTTONS.map(buttonRow => (
+            <div style={{ display: 'flex', gap: 2 }}>
+              {buttonRow.map(buttonGroup => (
+                <div>
+                  {buttonGroup.map(btn => (
+                    <Button index={btn} active={btn === button} />
+                  ))}
+                </div>
+              ))}
             </div>
           ))}
         </div>
       </div>
+      <div style={{ position: 'fixed', bottom: 0, right: 0 }}>
+        Built at: {import.meta.env.BUILD_TIME as string}
+      </div>
+    </div>
+  )
+}
+
+function Button({ active, index }: { active: boolean; index: number }) {
+  const visualActive = useRef(0)
+
+  useEffect(() => {
+    if (active) {
+      visualActive.current = visualActive.current + 1
+      setTimeout(() => (visualActive.current = visualActive.current - 1), 1000)
+    }
+  }, [active])
+
+  return (
+    <div
+      style={{
+        display: 'inline-block',
+        border: '1px solid black',
+        textAlign: 'center',
+        width: 20,
+        color: visualActive.current ? 'white' : 'black',
+        background: visualActive.current ? 'red' : 'white',
+      }}
+    >
+      {index} - {visualActive.current}
     </div>
   )
 }
