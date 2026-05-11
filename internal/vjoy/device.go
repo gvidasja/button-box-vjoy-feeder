@@ -2,6 +2,7 @@ package vjoy
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/gvidasja/button-box-vjoy-feeder/internal/device"
 	log "github.com/sirupsen/logrus"
@@ -22,15 +23,25 @@ func (d *vjoyDevice) Start() error {
 		return fmt.Errorf("cannot load vJoy DLL: %w", err)
 	}
 
-	if err := validateJoystick(d.id); err != nil {
-		return fmt.Errorf("invalid Joystick: %w", err)
+	var lastErr error
+	// try a few times to handle transient busy/missing states
+	for i := 0; i < 5; i++ {
+		if err := validateJoystick(d.id); err != nil {
+			lastErr = fmt.Errorf("invalid Joystick: %w", err)
+			time.Sleep(time.Duration(200*(i+1)) * time.Millisecond)
+			continue
+		}
+
+		if err := acquireVJD(d.id); err != nil {
+			lastErr = fmt.Errorf("cannot acquire VJD: %w", err)
+			time.Sleep(time.Duration(200*(i+1)) * time.Millisecond)
+			continue
+		}
+
+		return nil
 	}
 
-	if err := acquireVJD(d.id); err != nil {
-		return fmt.Errorf("cannot acquire VJD %w", err)
-	}
-
-	return nil
+	return lastErr
 }
 
 func (d *vjoyDevice) Stop() {

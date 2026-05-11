@@ -85,12 +85,13 @@ func (c *Consumer) Stop() {
 func (c *Consumer) getPort() (*serial.Port, error) {
 	portName := fmt.Sprintf("COM%d", c.port)
 
-	cfg := &serial.Config{Name: portName, Baud: 9600}
+	cfg := &serial.Config{Name: portName, Baud: 9600, ReadTimeout: time.Second}
 
 	port, err := serial.OpenPort(cfg)
 
 	if err != nil {
-		log.Errorf("could not connect to port %v: %w", portName, err)
+		log.Errorf("could not connect to port %v: %v", portName, err)
+		return nil, err
 	}
 
 	log.Infof("using port %s", portName)
