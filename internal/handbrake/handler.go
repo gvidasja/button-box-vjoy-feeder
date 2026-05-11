@@ -1,13 +1,13 @@
 package handbrake
 
 import (
+	"log/slog"
 	"math"
 	"strconv"
 
 	"github.com/gvidasja/button-box-vjoy-feeder/internal/device"
 	"github.com/gvidasja/button-box-vjoy-feeder/internal/events"
 	"github.com/gvidasja/button-box-vjoy-feeder/internal/serial"
-	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -25,7 +25,7 @@ func NewHandler(device device.Device, producer events.Producer) serial.Handler {
 	return serial.HandlerFunc(func(data string) {
 		state, _ := strconv.ParseFloat(data, 64)
 
-		log.Debugf("handbrake %v", state)
+		slog.Debug("handbrake", "state", state)
 
 		scaledState := int64(vjoyMin + (vjoyMax-vjoyMin)*(state-handbrakeMin)/(handbrakeMax-handbrakeMin))
 
@@ -36,13 +36,13 @@ func NewHandler(device device.Device, producer events.Producer) serial.Handler {
 		}
 
 		if math.Abs(float64(previousState-scaledState)/float64(vjoyMax-vjoyMin)) > 0.2 {
-			log.Debugf("skipping %v -> %v", previousState, scaledState)
+			slog.Debug("skipping handbrake", "from", previousState, "to", scaledState)
 			return
 		}
 
 		previousState = scaledState
 
-		log.Debugf("sending %v -> %v", state, scaledState)
+		slog.Debug("sending handbrake", "state", state, "scaled", scaledState)
 		device.SetAxis(axisID, int32(scaledState))
 		producer.Produce("handbrake", map[string]any{
 			"min":   vjoyMin,

@@ -1,9 +1,9 @@
 package events
 
 import (
+	"log/slog"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -25,7 +25,7 @@ func NewAppEventProducer(interval time.Duration) *AppEventProducer {
 }
 
 func (p *AppEventProducer) Produce(event string, data any) {
-	logrus.Debug("Producing event: ", event, " with data: ", data, p.interval, p.app != nil)
+	slog.Debug("Producing event", "event", event, "data", data, "interval", p.interval, "hasApp", p.app != nil)
 
 	if p.app == nil {
 		return

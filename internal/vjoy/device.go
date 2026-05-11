@@ -2,10 +2,10 @@ package vjoy
 
 import (
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/gvidasja/button-box-vjoy-feeder/internal/device"
-	log "github.com/sirupsen/logrus"
 )
 
 type vjoyDevice struct {
@@ -48,7 +48,7 @@ func (d *vjoyDevice) Stop() {
 	err := relinquishVJD(d.id)
 
 	if err != nil {
-		log.Errorf("could not relinquish VJD: %v", err)
+		slog.Error("could not relinquish VJD", "err", err)
 	}
 }
 

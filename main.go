@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 	"io"
+	"log/slog"
 	"os"
 	"time"
 
@@ -12,7 +13,6 @@ import (
 	"github.com/gvidasja/button-box-vjoy-feeder/internal/handbrake"
 	"github.com/gvidasja/button-box-vjoy-feeder/internal/serial"
 	"github.com/gvidasja/button-box-vjoy-feeder/internal/vjoy"
-	log "github.com/sirupsen/logrus"
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
 	"golang.org/x/sys/windows/registry"
@@ -25,10 +25,10 @@ func main() {
 	addToStartup("button-box-vjoy-feeder", os.Args[0])
 
 	logFile, _ := os.OpenFile(`E:\dev\button-box-vjoy-feeder\button-box-vjoy-feeder.log`, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
-	log.SetOutput(io.MultiWriter(logFile, os.Stdout))
-	log.SetLevel(log.InfoLevel)
+	w := io.MultiWriter(logFile, os.Stdout)
+	slog.SetDefault(slog.New(slog.NewTextHandler(w, &slog.HandlerOptions{Level: slog.LevelInfo})))
 
-	log.Infof("working dir: %s", getWorkingDir())
+	slog.Info("working dir", "dir", getWorkingDir())
 
 	appEventProducer := appEvents.NewAppEventProducer(time.Second / 60)
 
@@ -58,12 +58,12 @@ func main() {
 			UniqueID: "com.gvidasja.button-box-vjoy-feeder",
 		},
 		OnShutdown: func() {
-			log.Info("Shutting down...")
+			slog.Info("Shutting down...")
 			buttonBoxSerialConsumer.Stop()
 			handbrakeSerialConsumer.Stop()
 			buttonBoxVJoyDevice.Stop()
 			handbrakeVJoyDevice.Stop()
-			log.Info("Shutdown complete")
+			slog.Info("Shutdown complete")
 		},
 	})
 
@@ -75,7 +75,7 @@ func main() {
 	})
 
 	window.RegisterHook(events.Windows.WindowClosing, func(event *application.WindowEvent) {
-		log.Info("Window closing event triggered, cancelling...")
+		slog.Info("Window closing event triggered, cancelling...")
 		window.Hide()
 		event.Cancel()
 	})
@@ -89,7 +89,7 @@ func main() {
 	tray.SetLabel("Button Box VJoy Feeder")
 
 	tray.OnClick(func() {
-		log.Info("Tray icon clicked", "Window is visible:", window.IsVisible())
+		slog.Info("Tray icon clicked", "windowVisible", window.IsVisible())
 		if window.IsVisible() {
 			window.Hide()
 		} else {
@@ -101,7 +101,7 @@ func main() {
 	menu := application.NewMenu()
 
 	menu.Add("Quit").OnClick(func(*application.Context) {
-		log.Info("Quit clicked")
+		slog.Info("Quit clicked")
 		app.Quit()
 	})
 
@@ -115,7 +115,8 @@ func main() {
 	err := app.Run()
 
 	if err != nil {
-		log.Fatal("Error:", err.Error())
+		slog.Error("Error", "err", err)
+		os.Exit(1)
 	}
 }
 

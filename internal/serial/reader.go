@@ -3,9 +3,9 @@ package serial
 import (
 	"bufio"
 	"fmt"
+	"log/slog"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/tarm/serial"
 )
 
@@ -38,7 +38,7 @@ func (c *Consumer) Start() error {
 			port, err := c.getPort()
 
 			if err != nil {
-				log.Error(err)
+				slog.Error("serial error", "err", err)
 				time.Sleep(time.Second)
 				continue
 			}
@@ -50,7 +50,7 @@ func (c *Consumer) Start() error {
 			for !eof {
 				if !scanner.Scan() {
 					if err := scanner.Err(); err != nil {
-						log.Errorf("scanner err: %v", err)
+						slog.Error("scanner err", "err", err)
 						time.Sleep(time.Second)
 						break
 					}
@@ -59,7 +59,7 @@ func (c *Consumer) Start() error {
 				reading := scanner.Text()
 
 				if time.Now().Before(startTime.Add(time.Second)) {
-					log.Debugf("skipping %v", reading)
+					slog.Debug("skipping", "reading", reading)
 					continue
 				}
 
@@ -67,7 +67,7 @@ func (c *Consumer) Start() error {
 			}
 		}
 
-		log.Info("EOF")
+		slog.Info("EOF")
 	}()
 
 	go func() {
@@ -90,10 +90,10 @@ func (c *Consumer) getPort() (*serial.Port, error) {
 	port, err := serial.OpenPort(cfg)
 
 	if err != nil {
-		log.Errorf("could not connect to port %v: %v", portName, err)
+		slog.Error("could not connect to port", "port", portName, "err", err)
 		return nil, err
 	}
 
-	log.Infof("using port %s", portName)
+	slog.Info("using port", "port", portName)
 	return port, nil
 }
