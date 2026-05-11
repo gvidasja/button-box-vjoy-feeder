@@ -9,46 +9,64 @@ import (
 )
 
 type vjoyDevice struct {
-	id uint
+	id   uint
+	done chan struct{}
 }
 
 var _ device.Device = (*vjoyDevice)(nil)
 
 func NewDevice(id uint) *vjoyDevice {
-	return &vjoyDevice{id}
+	return &vjoyDevice{id: id, done: make(chan struct{})}
 }
 
 func (d *vjoyDevice) Start() error {
 	if err := loadVJoyDLL(); err != nil {
-		return fmt.Errorf("cannot load vJoy DLL: %w", err)
+		slog.Warn("vJoy DLL not available yet, will retry in background", "err", err)
 	}
+	go d.keepAcquired()
+	return nil
+}
 
-	var lastErr error
-	// try a few times to handle transient busy/missing states
-	for i := 0; i < 5; i++ {
+func (d *vjoyDevice) keepAcquired() {
+	backoff := time.Second
+	for {
 		if err := validateJoystick(d.id); err != nil {
-			lastErr = fmt.Errorf("invalid Joystick: %w", err)
-			time.Sleep(time.Duration(200*(i+1)) * time.Millisecond)
-			continue
+			slog.Warn("vjoy validate failed, retrying", "device", d.id, "err", err, "backoff", backoff)
+			select {
+			case <-d.done:
+				return
+			case <-time.After(backoff):
+				backoff = min(backoff*2, 30*time.Second)
+				continue
+			}
 		}
 
 		if err := acquireVJD(d.id); err != nil {
-			lastErr = fmt.Errorf("cannot acquire VJD: %w", err)
-			time.Sleep(time.Duration(200*(i+1)) * time.Millisecond)
-			continue
+			slog.Warn("vjoy acquire failed, retrying", "device", d.id, "err", err, "backoff", backoff)
+			select {
+			case <-d.done:
+				return
+			case <-time.After(backoff):
+				backoff = min(backoff*2, 30*time.Second)
+				continue
+			}
 		}
 
-		return nil
+		slog.Info("vjoy device acquired", "device", d.id)
+		return
 	}
-
-	return lastErr
 }
 
 func (d *vjoyDevice) Stop() {
-	err := relinquishVJD(d.id)
+	select {
+	case <-d.done:
+	default:
+		close(d.done)
+	}
 
+	err := relinquishVJD(d.id)
 	if err != nil {
-		slog.Error("could not relinquish VJD", "err", err)
+		slog.Error("could not relinquish VJD", "device", d.id, "err", err)
 	}
 }
 
@@ -67,15 +85,14 @@ func validateJoystick(deviceID uint) error {
 
 	switch status := getVJDStatus(deviceID); status {
 	case VJD_STAT_OWN, VJD_STAT_FREE:
-		break
+		return nil
 	case VJD_STAT_BUSY:
 		return fmt.Errorf("device %d is busy", deviceID)
 	case VJD_STAT_MISS:
 		return fmt.Errorf("device %d not found", deviceID)
 	case VJD_STAT_UNKN:
+		fallthrough
 	default:
 		return fmt.Errorf("unknown error with device %d", deviceID)
 	}
-
-	return nil
 }

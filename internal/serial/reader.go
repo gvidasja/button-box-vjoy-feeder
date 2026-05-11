@@ -51,9 +51,10 @@ func (c *Consumer) Start() error {
 				if !scanner.Scan() {
 					if err := scanner.Err(); err != nil {
 						slog.Error("scanner err", "err", err)
-						time.Sleep(time.Second)
-						break
 					}
+					slog.Debug("serial disconnected, reconnecting...")
+					time.Sleep(time.Second)
+					break
 				}
 
 				reading := scanner.Text()

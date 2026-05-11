@@ -107,8 +107,12 @@ func main() {
 
 	tray.SetMenu(menu)
 
-	buttonBoxVJoyDevice.Start()
-	handbrakeVJoyDevice.Start()
+	if err := buttonBoxVJoyDevice.Start(); err != nil {
+		slog.Warn("button box vjoy start", "err", err)
+	}
+	if err := handbrakeVJoyDevice.Start(); err != nil {
+		slog.Warn("handbrake vjoy start", "err", err)
+	}
 	buttonBoxSerialConsumer.Start()
 	handbrakeSerialConsumer.Start()
 
