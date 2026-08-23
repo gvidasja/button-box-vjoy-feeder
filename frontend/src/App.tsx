@@ -15,16 +15,16 @@ const BUTTONS = [
 ]
 
 function App() {
-  const [hanbrake, setHanbrake] = useState<HanbrakeState>({ min: 0, max: 1, state: 0 })
+  const [handbrake, setHanbrake] = useState<HanbrakeState>({ min: 0, max: 1, state: 0 })
   const [button, setButton] = useState<number>(0)
 
   useEffect(() => {
     Events.On('handbrake', (v: Events.WailsEvent) => {
-      setHanbrake(v.data[0])
+      setHanbrake(v.data)
     })
 
     Events.On('button', (v: Events.WailsEvent) => {
-      setButton(v.data[0])
+      setButton(v.data)
     })
 
     WML.Reload()
@@ -36,12 +36,12 @@ function App() {
         <div>
           <div>Hanbrake</div>
           <div>
-            {hanbrake.min} {hanbrake.state} {hanbrake.max}
+            {handbrake.min} {handbrake.state} {handbrake.max}
           </div>
-          <div>0 {(hanbrake.state / hanbrake.max).toFixed(2)} 1</div>
+          <div>0 {(handbrake.state / handbrake.max).toFixed(2)} 1</div>
         </div>
         <div>
-          <progress max={hanbrake.max} value={hanbrake.state - hanbrake.min}></progress>
+          <progress max={handbrake.max} value={handbrake.state - handbrake.min}></progress>
         </div>
       </div>
       <div>

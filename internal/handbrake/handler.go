@@ -14,7 +14,7 @@ const (
 	handbrakeMin = (100)
 	handbrakeMax = (1024)
 	vjoyMin      = (0)
-	vjoyMax      = (math.MaxInt32)
+	vjoyMax      = (math.MaxInt16)
 
 	axisID = 0x32
 )
@@ -43,6 +43,7 @@ func NewHandler(device device.Device, producer events.Producer) serial.Handler {
 		previousState = scaledState
 
 		slog.Debug("sending handbrake", "state", state, "scaled", scaledState)
+
 		device.SetAxis(axisID, int32(scaledState))
 		producer.Produce("handbrake", map[string]any{
 			"min":   vjoyMin,

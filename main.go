@@ -24,7 +24,7 @@ var assets embed.FS
 func main() {
 	addToStartup("button-box-vjoy-feeder", os.Args[0])
 
-	logFile, _ := os.OpenFile(`E:\dev\button-box-vjoy-feeder\button-box-vjoy-feeder.log`, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+	logFile, _ := os.OpenFile(`F:\dev\button-box-vjoy-feeder\button-box-vjoy-feeder.log`, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 	w := io.MultiWriter(logFile, os.Stdout)
 	slog.SetDefault(slog.New(slog.NewTextHandler(w, &slog.HandlerOptions{Level: slog.LevelInfo})))
 
@@ -32,14 +32,13 @@ func main() {
 
 	appEventProducer := appEvents.NewAppEventProducer(time.Second / 60)
 
-	buttonBoxVJoyDevice := vjoy.NewDevice(1)
-	handbrakeVJoyDevice := vjoy.NewDevice(2)
+	vjoyDevice := vjoy.NewDevice(1)
 
-	buttonBoxHandler := buttonbox.NewHandler(device.New(buttonBoxVJoyDevice, device.DeviceConfig{
+	buttonBoxHandler := buttonbox.NewHandler(device.New(vjoyDevice, device.DeviceConfig{
 		MinimumButtonPressDuration: time.Millisecond * 20,
 	}), appEventProducer)
 
-	handbrakeHadler := handbrake.NewHandler(device.New(handbrakeVJoyDevice, device.DeviceConfig{
+	handbrakeHadler := handbrake.NewHandler(device.New(vjoyDevice, device.DeviceConfig{
 		MinimumButtonPressDuration: time.Millisecond * 20,
 	}), appEventProducer)
 
@@ -61,8 +60,7 @@ func main() {
 			slog.Info("Shutting down...")
 			buttonBoxSerialConsumer.Stop()
 			handbrakeSerialConsumer.Stop()
-			buttonBoxVJoyDevice.Stop()
-			handbrakeVJoyDevice.Stop()
+			vjoyDevice.Stop()
 			slog.Info("Shutdown complete")
 		},
 	})
@@ -107,11 +105,8 @@ func main() {
 
 	tray.SetMenu(menu)
 
-	if err := buttonBoxVJoyDevice.Start(); err != nil {
-		slog.Warn("button box vjoy start", "err", err)
-	}
-	if err := handbrakeVJoyDevice.Start(); err != nil {
-		slog.Warn("handbrake vjoy start", "err", err)
+	if err := vjoyDevice.Start(); err != nil {
+		slog.Warn("vjoy start", "err", err)
 	}
 	buttonBoxSerialConsumer.Start()
 	handbrakeSerialConsumer.Start()

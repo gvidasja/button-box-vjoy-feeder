@@ -16,10 +16,10 @@ tasks:
     generates:
       - node_modules/*
     preconditions:
-      - sh: npm version
+      - sh: bun --version
         msg: "Looks like npm isn't installed. Npm is part of the Node installer: https://nodejs.org/en/download/"
     cmds:
-      - npm install
+      - bun install
 
   build:frontend:
     label: build:frontend (PRODUCTION={{.PRODUCTION}})
@@ -36,7 +36,7 @@ tasks:
           BUILD_FLAGS:
             ref: .BUILD_FLAGS
     cmds:
-      - npm run {{.BUILD_COMMAND}} -q
+      - bun run --silent {{.BUILD_COMMAND}}
     env:
       PRODUCTION: '{{.PRODUCTION | default "false"}}'
     vars:
@@ -77,7 +77,7 @@ tasks:
     deps:
       - task: install:frontend:deps
     cmds:
-      - npm run dev -- --port {{.VITE_PORT}} --strictPort
+      - bun run dev -- --port {{.VITE_PORT}} --strictPort
 
   update:build-assets:
     summary: Updates the build assets
