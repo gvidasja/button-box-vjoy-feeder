@@ -6,43 +6,32 @@ type (
 )
 
 const (
-	Enc1Neg    = ButtonID(1)
-	Enc1Pos    = ButtonID(2)
-	Enc2Neg    = ButtonID(3)
-	Enc2Pos    = ButtonID(4)
-	Enc3Neg    = ButtonID(5)
-	Enc3Pos    = ButtonID(6)
-	Enc4Neg    = ButtonID(7)
-	Enc4Pos    = ButtonID(8)
-	Button1    = ButtonID(9)
-	Button2    = ButtonID(10)
-	Button3    = ButtonID(11)
-	Button4    = ButtonID(12)
-	Button5    = ButtonID(13)
-	Button6    = ButtonID(14)
-	Button7    = ButtonID(15)
-	Button8    = ButtonID(16)
-	Button9    = ButtonID(17)
-	Button10   = ButtonID(18)
-	Button11   = ButtonID(19)
-	Button12   = ButtonID(20)
-	Switch1Neg = ButtonID(21)
-	Switch1Pos = ButtonID(22)
-	Switch2Neg = ButtonID(23)
-	Switch2Pos = ButtonID(24)
-	Switch3Neg = ButtonID(25)
-	Switch3Pos = ButtonID(26)
-	Switch4Neg = ButtonID(27)
-	Switch4Pos = ButtonID(28)
+	TC_DOWN            = ButtonID(1)
+	TC_UP              = ButtonID(2)
+	ABS_DOWN           = ButtonID(3)
+	ABS_UP             = ButtonID(4)
+	ENGINE_DOWN        = ButtonID(5)
+	ENGINE_UP          = ButtonID(6)
+	RECOVERY_DOWN      = ButtonID(7)
+	RECOVERY_UP        = ButtonID(8)
+	BUTTON_9_LIGHTS    = ButtonID(9)
+	BUTTON_10_LIGHTS_2 = ButtonID(10)
+	BUTTON_11          = ButtonID(11)
+	BUTTON_12          = ButtonID(12)
+	BUTTON_13_WIPERS   = ButtonID(13)
+	BUTTON_14          = ButtonID(14)
+	BUTTON_15_HORN     = ButtonID(15)
+	BUTTON_16          = ButtonID(16)
+	BUTTON_17_STARTED  = ButtonID(17)
+	BUTTON_18_HAZARDS  = ButtonID(18)
+	BUTTON_19          = ButtonID(19)
+	BUTTON_20          = ButtonID(20)
+	IGNITION_ON        = ButtonID(21)
+	IGNITION_OFF       = ButtonID(22)
+	SWITCH_2_ON        = ButtonID(23)
+	SWITCH_2_OFF       = ButtonID(24)
+	SWITCH_3_ON        = ButtonID(25)
+	SWITCH_3_OFF       = ButtonID(26)
+	SWITCH_4_ON        = ButtonID(27)
+	SWITCH_4_OFF       = ButtonID(28)
 )
-
-var switches = map[ButtonID]bool{
-	Switch1Neg: true,
-	Switch1Pos: true,
-	Switch2Neg: true,
-	Switch2Pos: true,
-	Switch3Neg: true,
-	Switch3Pos: true,
-	Switch4Neg: true,
-	Switch4Pos: true,
-}

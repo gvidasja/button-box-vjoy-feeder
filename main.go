@@ -34,11 +34,11 @@ func main() {
 
 	vjoyDevice := vjoy.NewDevice(1)
 
-	buttonBoxHandler := buttonbox.NewHandler(device.New(vjoyDevice, device.DeviceConfig{
+	buttonBoxHandler := buttonbox.NewHandler(device.NewDebouncedDevice(vjoyDevice, device.DebouncedDeviceConfig{
 		MinimumButtonPressDuration: time.Millisecond * 20,
 	}), appEventProducer)
 
-	handbrakeHadler := handbrake.NewHandler(device.New(vjoyDevice, device.DeviceConfig{
+	handbrakeHadler := handbrake.NewHandler(device.NewDebouncedDevice(vjoyDevice, device.DebouncedDeviceConfig{
 		MinimumButtonPressDuration: time.Millisecond * 20,
 	}), appEventProducer)
 

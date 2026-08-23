@@ -2,36 +2,40 @@ package buttonbox
 
 import (
 	"log/slog"
-	"time"
 
 	"github.com/gvidasja/button-box-vjoy-feeder/internal/device"
 	"github.com/gvidasja/button-box-vjoy-feeder/internal/events"
 	"github.com/gvidasja/button-box-vjoy-feeder/internal/serial"
 )
 
-func NewHandler(device device.Device, producer events.Producer) serial.Handler {
-	return serial.HandlerFunc(func(message string) {
+func NewHandler(d device.Device, producer events.Producer) serial.Handler {
+	send := func(buttonID device.ButtonID, state bool) {
+		if err := d.SetButton(buttonID, state); err != nil {
+			slog.Error("failed to set button, retrying once", "button", buttonID, "err", err)
+		}
 
+		producer.Produce("button", map[string]any{"button": buttonID, "state": state})
+	}
+
+	return serial.HandlerFunc(func(message string) {
 		reading := parseButtonReading(message)
 
-		slog.Debug("button", "id", reading.buttonID, "state", reading.state)
+		slog.Debug("reading", "id", reading.id, "state", reading.state)
 
-		buttonID := reading.getButtonID()
-
-		if deviceButtonID, ok := keyMap[buttonID]; ok {
-			slog.Debug("sending", "from", buttonID, "to", deviceButtonID)
-
-			if err := device.SetButton(deviceButtonID, reading.state); err != nil {
-				slog.Error("failed to set button, retrying once", "button", deviceButtonID, "err", err)
-				time.Sleep(200 * time.Millisecond)
-				if err2 := device.SetButton(deviceButtonID, reading.state); err2 != nil {
-					slog.Error("retry failed for button", "button", deviceButtonID, "err", err2)
-				}
-			}
-
-			if reading.state {
-				producer.Produce("button", deviceButtonID)
+		if deviceButtonID, ok := keyMap[reading.id]; ok {
+			if sw, ok := switches[deviceButtonID]; ok {
+				send(sw[reading.state], true)
+				send(sw[reading.state], false)
+			} else {
+				send(deviceButtonID, reading.state)
 			}
 		}
 	})
+}
+
+var switches = map[device.ButtonID]map[bool]device.ButtonID{
+	device.IGNITION_ON: {false: device.IGNITION_ON, true: device.IGNITION_OFF},
+	device.SWITCH_2_ON: {false: device.SWITCH_2_ON, true: device.SWITCH_2_OFF},
+	device.SWITCH_3_ON: {true: device.SWITCH_3_ON, false: device.SWITCH_3_OFF},
+	device.SWITCH_4_ON: {true: device.SWITCH_4_OFF, false: device.SWITCH_4_ON},
 }
