@@ -1,7 +1,6 @@
 package main
 
 import (
-	"embed"
 	"io"
 	"log/slog"
 	"os"
@@ -9,127 +8,72 @@ import (
 
 	"github.com/gvidasja/button-box-vjoy-feeder/internal/buttonbox"
 	"github.com/gvidasja/button-box-vjoy-feeder/internal/device"
-	appEvents "github.com/gvidasja/button-box-vjoy-feeder/internal/events"
 	"github.com/gvidasja/button-box-vjoy-feeder/internal/handbrake"
 	"github.com/gvidasja/button-box-vjoy-feeder/internal/serial"
+	"github.com/gvidasja/button-box-vjoy-feeder/internal/ui"
 	"github.com/gvidasja/button-box-vjoy-feeder/internal/vjoy"
-	"github.com/wailsapp/wails/v3/pkg/application"
-	"github.com/wailsapp/wails/v3/pkg/events"
+	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/registry"
 )
 
-//go:embed all:frontend/dist
-var assets embed.FS
-
 func main() {
-	addToStartup("button-box-vjoy-feeder", os.Args[0])
+	mutex, alreadyRunning, err := acquireSingleInstance()
+	if err != nil || alreadyRunning {
+		return
+	}
+	defer windows.CloseHandle(mutex)
+
+	_ = addToStartup("button-box-vjoy-feeder", os.Args[0])
 
 	logFile, _ := os.OpenFile(`F:\dev\button-box-vjoy-feeder\button-box-vjoy-feeder.log`, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
-	w := io.MultiWriter(logFile, os.Stdout)
-	slog.SetDefault(slog.New(slog.NewTextHandler(w, &slog.HandlerOptions{Level: slog.LevelInfo})))
-
-	slog.Info("working dir", "dir", getWorkingDir())
-
-	appEventProducer := appEvents.NewAppEventProducer(time.Second / 60)
+	defer logFile.Close()
+	slog.SetDefault(slog.New(slog.NewTextHandler(io.MultiWriter(logFile, os.Stdout), &slog.HandlerOptions{Level: slog.LevelInfo})))
 
 	vjoyDevice := vjoy.NewDevice(1)
-
-	buttonBoxHandler := buttonbox.NewHandler(device.NewDebouncedDevice(vjoyDevice, device.DebouncedDeviceConfig{
-		MinimumButtonPressDuration: time.Millisecond * 20,
-	}), appEventProducer)
-
-	handbrakeHadler := handbrake.NewHandler(device.NewDebouncedDevice(vjoyDevice, device.DebouncedDeviceConfig{
-		MinimumButtonPressDuration: time.Millisecond * 20,
-	}), appEventProducer)
-
-	buttonBoxSerialConsumer := serial.NewConsumer(3, buttonBoxHandler)
-	handbrakeSerialConsumer := serial.NewConsumer(4, handbrakeHadler)
-
-	app := application.New(application.Options{
-		Name: "button-box-vjoy-feeder",
-		Assets: application.AssetOptions{
-			Handler: application.AssetFileServerFS(assets),
-		},
-		Windows: application.WindowsOptions{
-			DisableQuitOnLastWindowClosed: true,
-		},
-		SingleInstance: &application.SingleInstanceOptions{
-			UniqueID: "com.gvidasja.button-box-vjoy-feeder",
-		},
-		OnShutdown: func() {
-			slog.Info("Shutting down...")
-			buttonBoxSerialConsumer.Stop()
-			handbrakeSerialConsumer.Stop()
-			vjoyDevice.Stop()
-			slog.Info("Shutdown complete")
-		},
-	})
-
-	appEventProducer.SetApp(app)
-
-	window := app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title: "Button Box vJoy Feeder",
-		URL:   "/",
-	})
-
-	window.RegisterHook(events.Windows.WindowClosing, func(event *application.WindowEvent) {
-		slog.Info("Window closing event triggered, cancelling...")
-		window.Hide()
-		event.Cancel()
-	})
-
-	window.OnWindowEvent(events.Common.WindowShow, func(ctx *application.WindowEvent) {
-		// window.OpenDevTools()
-	})
-
-	tray := app.SystemTray.New()
-
-	tray.SetLabel("Button Box VJoy Feeder")
-
-	tray.OnClick(func() {
-		slog.Info("Tray icon clicked", "windowVisible", window.IsVisible())
-		if window.IsVisible() {
-			window.Hide()
-		} else {
-			window.Show()
-			window.Focus()
-		}
-	})
-
-	menu := application.NewMenu()
-
-	menu.Add("Quit").OnClick(func(*application.Context) {
-		slog.Info("Quit clicked")
-		app.Quit()
-	})
-
-	tray.SetMenu(menu)
+	updates := device.NewUpdates()
+	outputDevice := device.NewPublishingDevice(vjoyDevice, updates)
+	buttonBoxConsumer := serial.NewConsumer(3, buttonbox.NewHandler(
+		device.NewDebouncedDevice(outputDevice, device.DebouncedDeviceConfig{MinimumButtonPressDuration: 20 * time.Millisecond}),
+	))
+	handbrakeConsumer := serial.NewConsumer(4, handbrake.NewHandler(
+		device.NewDebouncedDevice(outputDevice, device.DebouncedDeviceConfig{MinimumButtonPressDuration: 20 * time.Millisecond}),
+	))
 
 	if err := vjoyDevice.Start(); err != nil {
 		slog.Warn("vjoy start", "err", err)
 	}
-	buttonBoxSerialConsumer.Start()
-	handbrakeSerialConsumer.Start()
+	_ = buttonBoxConsumer.Start()
+	_ = handbrakeConsumer.Start()
 
-	err := app.Run()
+	ui.New(updates, func() {
+		buttonBoxConsumer.Stop()
+		handbrakeConsumer.Stop()
+		vjoyDevice.Stop()
+	}).Run()
 
-	if err != nil {
-		slog.Error("Error", "err", err)
-		os.Exit(1)
-	}
 }
 
-func getWorkingDir() string {
-	workingDir, _ := os.Getwd()
-	return workingDir
+func acquireSingleInstance() (windows.Handle, bool, error) {
+	name, err := windows.UTF16PtrFromString("Local\\button-box-vjoy-feeder")
+	if err != nil {
+		return 0, false, err
+	}
+	handle, createErr := windows.CreateMutex(nil, false, name)
+	if handle == 0 {
+		return 0, false, createErr
+	}
+	if createErr == windows.ERROR_ALREADY_EXISTS {
+		_ = windows.CloseHandle(handle)
+		return 0, true, nil
+	}
+	return handle, false, createErr
 }
 
 func addToStartup(appName, exePath string) error {
-	k, _, err := registry.CreateKey(registry.CURRENT_USER,
-		`Software\Microsoft\Windows\CurrentVersion\Run`, registry.ALL_ACCESS)
+	key, _, err := registry.CreateKey(registry.CURRENT_USER, `Software\Microsoft\Windows\CurrentVersion\Run`, registry.ALL_ACCESS)
 	if err != nil {
 		return err
 	}
-	defer k.Close()
-	return k.SetStringValue(appName, exePath)
+	defer key.Close()
+	return key.SetStringValue(appName, exePath)
 }

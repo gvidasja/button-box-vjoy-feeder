@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	"github.com/gvidasja/button-box-vjoy-feeder/internal/device"
-	"github.com/gvidasja/button-box-vjoy-feeder/internal/events"
 	"github.com/gvidasja/button-box-vjoy-feeder/internal/serial"
 )
 
@@ -21,7 +20,7 @@ const (
 
 var previousState = int64(vjoyMin)
 
-func NewHandler(device device.Device, producer events.Producer) serial.Handler {
+func NewHandler(device device.Device) serial.Handler {
 	return serial.HandlerFunc(func(data string) {
 		state, _ := strconv.ParseFloat(data, 64)
 
@@ -45,10 +44,5 @@ func NewHandler(device device.Device, producer events.Producer) serial.Handler {
 		slog.Debug("sending handbrake", "state", state, "scaled", scaledState)
 
 		device.SetAxis(axisID, int32(scaledState))
-		producer.Produce("handbrake", map[string]any{
-			"min":   vjoyMin,
-			"max":   vjoyMax,
-			"state": scaledState,
-		})
 	})
 }

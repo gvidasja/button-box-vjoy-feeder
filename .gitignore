@@ -3,9 +3,4 @@
 bin
 *.log
 build/*/
-
 .task
-bin
-frontend/dist
-frontend/node_modules
-build/windows/nsis/MicrosoftEdgeWebview2Setup.exe
