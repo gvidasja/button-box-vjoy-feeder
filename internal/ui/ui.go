@@ -36,6 +36,7 @@ func (app *App) Run() {
 	defer controls.activeBrush.DeleteObject()
 	setupInputUpdates(window, app.updates, controls)
 	setupControlPainting(window, controls)
+	setupQuitButton(window, controls.quitButton, &quitting)
 	setupTray(window, trayMessage, trayID, quitCommand, &quitting, &windowVisible)
 	setupShutdown(window, trayID, &quitting, app.shutdown)
 	window.RunAsMain()

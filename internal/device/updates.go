@@ -63,18 +63,16 @@ func (u *Updates) OnAxis(handler func(AxisUpdate)) {
 
 func (u *Updates) PublishButton(update ButtonUpdate) {
 	u.mu.RLock()
-	handlers := append([]func(ButtonUpdate){}, u.buttonHandlers...)
-	u.mu.RUnlock()
-	for _, handler := range handlers {
+	defer u.mu.RUnlock()
+	for _, handler := range u.buttonHandlers {
 		handler(update)
 	}
 }
 
 func (u *Updates) PublishAxis(update AxisUpdate) {
 	u.mu.RLock()
-	handlers := append([]func(AxisUpdate){}, u.axisHandlers...)
-	u.mu.RUnlock()
-	for _, handler := range handlers {
+	defer u.mu.RUnlock()
+	for _, handler := range u.axisHandlers {
 		handler(update)
 	}
 }

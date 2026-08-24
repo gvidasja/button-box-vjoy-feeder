@@ -65,6 +65,13 @@ func setupInputUpdates(window *windigo.Main, updates *device.Updates, controls c
 	})
 }
 
+func setupQuitButton(window *windigo.Main, button *windigo.Button, quitting *bool) {
+	button.On().BnClicked(func() {
+		*quitting = true
+		window.Hwnd().PostMessage(co.WM_CLOSE, 0, 0)
+	})
+}
+
 func setupControlPainting(window *windigo.Main, controls controls) {
 	window.On().WmCtlColorStatic(func(color windigo.WmCtlColor) win.HBRUSH {
 		if controls.buttonStates[color.HwndControl()] {
