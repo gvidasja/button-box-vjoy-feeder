@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/gvidasja/button-box-vjoy-feeder/internal/device"
 	"github.com/rodrigocfd/windigo/co"
@@ -10,14 +11,53 @@ import (
 )
 
 type controls struct {
-	quitButton   *windigo.Button
-	buttonLabels map[int]*windigo.Static
-	buttonStates map[win.HWND]bool
-	activeBrush  win.HBRUSH
+	quitButton     *windigo.Button
+	buttonLabels   map[int]*windigo.Static
+	buttonStates   map[win.HWND]bool
+	activeBrush    win.HBRUSH
+	handbrakeLabel *windigo.Static
+}
+
+const (
+	gridLeft        = 10
+	gridTop         = 10
+	rowHeight       = 25
+	labelWidth      = 22
+	labelHeight     = 20
+	buttonSpacing   = 24
+	groupSpacing    = 8
+	handbrakeGap    = 8
+	handbrakeHeight = 20
+	quitGap         = 15
+	quitWidth       = 70
+	quitHeight      = 24
+	margin          = 10
+)
+
+func gridContentWidth() int {
+	maxRight := 0
+	for _, row := range buttonGrid {
+		currentX := gridLeft
+		for _, group := range row {
+			for range group {
+				currentX += buttonSpacing
+			}
+			currentX += groupSpacing
+		}
+		right := currentX - groupSpacing - buttonSpacing + labelWidth
+		if right > maxRight {
+			maxRight = right
+		}
+	}
+	return maxRight
 }
 
 func createWindow() *windigo.Main {
-	return windigo.NewMain(windigo.OptsMain().Title("Button Box vJoy Feeder").ClassIconId(101).Size(windigo.Dpi(380, 320)).Style(co.WS_CAPTION | co.WS_SYSMENU | co.WS_MINIMIZEBOX | co.WS_SIZEBOX | co.WS_VISIBLE))
+	contentWidth := gridContentWidth() - gridLeft + 2*margin
+	gridBottom := gridTop + (len(buttonGrid)-1)*rowHeight + labelHeight
+	handbrakeBottom := gridBottom + handbrakeGap + handbrakeHeight
+	contentHeight := handbrakeBottom + quitGap + quitHeight + margin
+	return windigo.NewMain(windigo.OptsMain().Title("Button Box vJoy Feeder").ClassIconId(101).Size(windigo.Dpi(contentWidth+20, contentHeight+130)).Style(co.WS_CAPTION | co.WS_SYSMENU | co.WS_MINIMIZEBOX).CmdShow(co.SW_HIDE))
 }
 
 func createControls(window *windigo.Main) controls {
@@ -25,26 +65,35 @@ func createControls(window *windigo.Main) controls {
 	if err != nil {
 		panic(err)
 	}
+	contentRight := gridContentWidth()
+	gridBottom := gridTop + (len(buttonGrid)-1)*rowHeight + labelHeight
+	handbrakeY := gridBottom + handbrakeGap
+	quitX := gridLeft + (contentRight-gridLeft-quitWidth)/2
+	quitY := handbrakeY + handbrakeHeight + quitGap
 	result := controls{
-		quitButton:   windigo.NewButton(window, windigo.OptsButton().Text("Quit").Position(windigo.Dpi(290, 10)).Width(windigo.DpiX(70)).Height(windigo.DpiY(24))),
-		buttonLabels: make(map[int]*windigo.Static),
-		buttonStates: make(map[win.HWND]bool),
-		activeBrush:  brush,
+		quitButton:     windigo.NewButton(window, windigo.OptsButton().Text("Quit").Position(windigo.Dpi(quitX, quitY)).Width(windigo.DpiX(quitWidth)).Height(windigo.DpiY(quitHeight))),
+		buttonLabels:   make(map[int]*windigo.Static),
+		buttonStates:   make(map[win.HWND]bool),
+		activeBrush:    brush,
+		handbrakeLabel: windigo.NewStatic(window, windigo.OptsStatic().Text("Handbrake: --").Position(windigo.Dpi(gridLeft, handbrakeY)).Size(windigo.Dpi(contentRight-gridLeft, handbrakeHeight))),
 	}
 	for rowIndex, row := range buttonGrid {
-		currentX := 10
+		currentX := gridLeft
 		for _, group := range row {
 			for _, buttonID := range group {
-				label := windigo.NewStatic(window, windigo.OptsStatic().Text(fmt.Sprintf("%d", buttonID)).Position(windigo.Dpi(currentX, 95+rowIndex*25)).Size(windigo.Dpi(22, 20)))
+				label := windigo.NewStatic(window, windigo.OptsStatic().Text(fmt.Sprintf("%d", buttonID)).Position(windigo.Dpi(currentX, gridTop+rowIndex*rowHeight)).Size(windigo.Dpi(labelWidth, labelHeight)))
 				result.buttonLabels[buttonID] = label
 				result.buttonStates[label.Hwnd()] = false
-				currentX += 24
+				currentX += buttonSpacing
 			}
-			currentX += 8
+			currentX += groupSpacing
 		}
 	}
 	return result
 }
+
+// handbrakeAxisID must match the axis ID the handbrake handler publishes under (internal/handbrake/handler.go).
+const handbrakeAxisID = device.AxisID(0x32)
 
 func setupInputUpdates(window *windigo.Main, updates *device.Updates, controls controls) {
 	if updates == nil {
@@ -61,6 +110,15 @@ func setupInputUpdates(window *windigo.Main, updates *device.Updates, controls c
 				label.Hwnd().SetWindowText(text)
 				_ = label.Hwnd().InvalidateRect(nil, true)
 			}
+		})
+	})
+	updates.OnAxis(func(event device.AxisUpdate) {
+		if event.Axis != handbrakeAxisID {
+			return
+		}
+		window.UiThread(func() {
+			percent := event.Value * 100 / math.MaxInt16
+			controls.handbrakeLabel.Hwnd().SetWindowText(fmt.Sprintf("Handbrake: %d%%", percent))
 		})
 	})
 }

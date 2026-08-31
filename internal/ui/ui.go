@@ -29,7 +29,7 @@ func (app *App) Run() {
 	const trayID uint32 = 1
 	const quitCommand uint16 = 1001
 	quitting := false
-	windowVisible := true
+	windowVisible := false
 
 	window := createWindow()
 	controls := createControls(window)
