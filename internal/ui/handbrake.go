@@ -2,36 +2,25 @@ package ui
 
 import (
 	"fmt"
-	"sync/atomic"
 
 	"github.com/rodrigocfd/windigo/co"
-	windigo "github.com/rodrigocfd/windigo/ui"
 	"github.com/rodrigocfd/windigo/win"
 )
 
-func setupHandbrakeBar(window *windigo.Main, controls controls) {
-	window.On().WmDrawItem(func(p windigo.WmDrawItem) {
-		dis := p.DrawItemStruct()
-		if dis.HwndItem != controls.handbrakeBar.Hwnd() {
-			return
-		}
-		drawHandbrakeBar(*dis, atomic.LoadInt32(controls.handbrakePercent))
-	})
-}
-
-func drawHandbrakeBar(dis win.DRAWITEMSTRUCT, percent int32) {
-	width := int(dis.RcItem.Right - dis.RcItem.Left)
-	height := int(dis.RcItem.Bottom - dis.RcItem.Top)
+func drawHandbrakeBar(dis win.DRAWITEMSTRUCT, percent int32, fillBrush win.HBRUSH) {
+	width := dis.RcItem.Right - dis.RcItem.Left
+	height := dis.RcItem.Bottom - dis.RcItem.Top
 	if width <= 0 || height <= 0 {
 		return
 	}
 
+	// draw off-screen and blit, so frequent updates don't flicker
 	memDC, err := dis.Hdc.CreateCompatibleDC()
 	if err != nil {
 		return
 	}
 	defer memDC.DeleteDC()
-	bitmap, err := dis.Hdc.CreateCompatibleBitmap(width, height)
+	bitmap, err := dis.Hdc.CreateCompatibleBitmap(int(width), int(height))
 	if err != nil {
 		return
 	}
@@ -39,21 +28,18 @@ func drawHandbrakeBar(dis win.DRAWITEMSTRUCT, percent int32) {
 	oldBitmap, _ := memDC.SelectObjectBmp(bitmap)
 	defer memDC.SelectObjectBmp(oldBitmap)
 
-	full := win.RECT{Left: 0, Top: 0, Right: int32(width), Bottom: int32(height)}
+	full := win.RECT{Right: width, Bottom: height}
 
-	bgBrush, _ := win.CreateBrushIndirect(&win.LOGBRUSH{Style: co.BRS_SOLID, Color: win.RGB(255, 255, 255)})
+	bgBrush := solidBrush(win.RGB(255, 255, 255))
 	defer bgBrush.DeleteObject()
 	_ = memDC.FillRect(&full, bgBrush)
 
 	if percent > 0 {
-		fillWidth := min(int32(width)*percent/100, int32(width))
-		fillRect := win.RECT{Left: 0, Top: 0, Right: fillWidth, Bottom: int32(height)}
-		fillBrush, _ := win.CreateBrushIndirect(&win.LOGBRUSH{Style: co.BRS_SOLID, Color: win.RGB(70, 170, 90)})
-		defer fillBrush.DeleteObject()
-		_ = memDC.FillRect(&fillRect, fillBrush)
+		fill := win.RECT{Right: min(width*percent/100, width), Bottom: height}
+		_ = memDC.FillRect(&fill, fillBrush)
 	}
 
-	borderBrush, _ := win.CreateBrushIndirect(&win.LOGBRUSH{Style: co.BRS_SOLID, Color: win.RGB(120, 120, 120)})
+	borderBrush := solidBrush(win.RGB(120, 120, 120))
 	defer borderBrush.DeleteObject()
 	_ = memDC.FrameRect(&full, borderBrush)
 
@@ -65,5 +51,5 @@ func drawHandbrakeBar(dis win.DRAWITEMSTRUCT, percent int32) {
 	_, _ = memDC.SetTextColor(win.RGB(0, 0, 0))
 	_, _ = memDC.DrawText(fmt.Sprintf("%d%%", percent), &full, co.DT_CENTER|co.DT_VCENTER|co.DT_SINGLELINE)
 
-	_ = dis.Hdc.BitBlt(win.POINT{X: dis.RcItem.Left, Y: dis.RcItem.Top}, win.SIZE{Cx: int32(width), Cy: int32(height)}, memDC, win.POINT{}, co.ROP_SRCCOPY)
+	_ = dis.Hdc.BitBlt(win.POINT{X: dis.RcItem.Left, Y: dis.RcItem.Top}, win.SIZE{Cx: width, Cy: height}, memDC, win.POINT{}, co.ROP_SRCCOPY)
 }

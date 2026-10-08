@@ -31,7 +31,7 @@ func NewPublishingDevice(device Device, updates *Updates) Device {
 
 func (d *publishingDevice) SetButton(button ButtonID, state bool) error {
 	err := d.device.SetButton(button, state)
-	if err == nil && d.updates != nil {
+	if err == nil {
 		d.updates.PublishButton(ButtonUpdate{Button: button, State: state})
 	}
 	return err
@@ -39,7 +39,7 @@ func (d *publishingDevice) SetButton(button ButtonID, state bool) error {
 
 func (d *publishingDevice) SetAxis(axis AxisID, value int32) error {
 	err := d.device.SetAxis(axis, value)
-	if err == nil && d.updates != nil {
+	if err == nil {
 		d.updates.PublishAxis(AxisUpdate{Axis: axis, Value: value})
 	}
 	return err
