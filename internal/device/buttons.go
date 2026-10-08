@@ -35,3 +35,5 @@ const (
 	SWITCH_4_ON        = ButtonID(27)
 	SWITCH_4_OFF       = ButtonID(28)
 )
+
+const HANDBRAKE_AXIS = AxisID(0x32)

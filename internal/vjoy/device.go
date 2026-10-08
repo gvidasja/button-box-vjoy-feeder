@@ -30,30 +30,22 @@ func (d *vjoyDevice) Start() error {
 func (d *vjoyDevice) keepAcquired() {
 	backoff := time.Second
 	for {
-		if err := validateJoystick(d.id); err != nil {
-			slog.Warn("vjoy validate failed, retrying", "device", d.id, "err", err, "backoff", backoff)
-			select {
-			case <-d.done:
-				return
-			case <-time.After(backoff):
-				backoff = min(backoff*2, 30*time.Second)
-				continue
-			}
+		err := validateJoystick(d.id)
+		if err == nil {
+			err = acquireVJD(d.id)
+		}
+		if err == nil {
+			slog.Info("vjoy device acquired", "device", d.id)
+			return
 		}
 
-		if err := acquireVJD(d.id); err != nil {
-			slog.Warn("vjoy acquire failed, retrying", "device", d.id, "err", err, "backoff", backoff)
-			select {
-			case <-d.done:
-				return
-			case <-time.After(backoff):
-				backoff = min(backoff*2, 30*time.Second)
-				continue
-			}
+		slog.Warn("vjoy acquire failed, retrying", "device", d.id, "err", err, "backoff", backoff)
+		select {
+		case <-d.done:
+			return
+		case <-time.After(backoff):
+			backoff = min(backoff*2, 30*time.Second)
 		}
-
-		slog.Info("vjoy device acquired", "device", d.id)
-		return
 	}
 }
 

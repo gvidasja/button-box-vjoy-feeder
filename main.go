@@ -39,12 +39,12 @@ func main() {
 	vjoyDevice := vjoy.NewDevice(1)
 	updates := device.NewUpdates()
 	outputDevice := device.NewPublishingDevice(vjoyDevice, updates)
-	buttonBoxConsumer := serial.NewConsumer(3, buttonbox.NewHandler(
-		device.NewDebouncedDevice(outputDevice, device.DebouncedDeviceConfig{MinimumButtonPressDuration: 20 * time.Millisecond}),
-	))
-	handbrakeConsumer := serial.NewConsumer(4, handbrake.NewHandler(
-		device.NewDebouncedDevice(outputDevice, device.DebouncedDeviceConfig{MinimumButtonPressDuration: 20 * time.Millisecond}),
-	))
+	// each consumer gets its own debouncer: they run on separate goroutines
+	debounced := func() device.Device {
+		return device.NewDebouncedDevice(outputDevice, device.DebouncedDeviceConfig{MinimumButtonPressDuration: 20 * time.Millisecond})
+	}
+	buttonBoxConsumer := serial.NewConsumer(3, buttonbox.NewHandler(debounced()))
+	handbrakeConsumer := serial.NewConsumer(4, handbrake.NewHandler(debounced()))
 
 	if err := vjoyDevice.Start(); err != nil {
 		slog.Warn("vjoy start", "err", err)
@@ -52,12 +52,11 @@ func main() {
 	_ = buttonBoxConsumer.Start()
 	_ = handbrakeConsumer.Start()
 
-	ui.New(updates, func() {
+	ui.Run(updates, func() {
 		buttonBoxConsumer.Stop()
 		handbrakeConsumer.Stop()
 		vjoyDevice.Stop()
-	}, !startMinimized).Run()
-
+	}, !startMinimized)
 }
 
 func acquireSingleInstance() (windows.Handle, bool, error) {

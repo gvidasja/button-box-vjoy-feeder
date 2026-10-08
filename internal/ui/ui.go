@@ -5,10 +5,19 @@ import (
 
 	"github.com/gvidasja/button-box-vjoy-feeder/internal/device"
 	"github.com/rodrigocfd/windigo/co"
+	windigo "github.com/rodrigocfd/windigo/ui"
 	"github.com/rodrigocfd/windigo/win"
 )
 
-const windowTitle = "Button Box vJoy Feeder"
+const (
+	windowTitle = "Button Box vJoy Feeder"
+	iconID      = 101 // see appicon.rc
+	trayMessage = co.WM_USER + 1
+	trayID      = 1
+	quitCommand = 1001
+)
+
+var activeColor = win.RGB(70, 170, 90)
 
 var buttonGrid = [][][]int{
 	{{1, 2}, {9, 13, 17}, {21, 22}},
@@ -17,45 +26,45 @@ var buttonGrid = [][][]int{
 	{{7, 8}, {12, 16, 20}, {27, 28}},
 }
 
-type App struct {
-	updates      *device.Updates
-	shutdown     func()
-	startVisible bool
+type app struct {
+	window   *windigo.Main
+	controls *controls
+	quitting bool
 }
 
-func New(updates *device.Updates, shutdown func(), startVisible bool) *App {
-	return &App{updates: updates, shutdown: shutdown, startVisible: startVisible}
-}
-
-func (app *App) Run() {
+// Run creates the window and tray icon and blocks until the user quits.
+func Run(updates *device.Updates, shutdown func(), startVisible bool) {
 	runtime.LockOSThread()
-	const trayMessage co.WM = co.WM_USER + 1
-	const trayID uint32 = 1
-	const quitCommand uint16 = 1001
-	quitting := false
-	windowVisible := app.startVisible
-
-	window := createWindow(app.startVisible)
-	controls := createControls(window)
-	defer controls.activeBrush.DeleteObject()
-	setupInputUpdates(window, app.updates, controls)
-	setupControlPainting(window, controls)
-	setupQuitButton(window, controls.quitButton, &quitting)
-	setupHandbrakeBar(window, controls)
-	setupTray(window, trayMessage, trayID, quitCommand, &quitting, &windowVisible)
-	setupShutdown(window, trayID, &quitting, app.shutdown)
-	window.RunAsMain()
+	l := computeLayout()
+	a := &app{window: createWindow(l, startVisible)}
+	a.controls = createControls(a.window, l)
+	defer a.controls.activeBrush.DeleteObject()
+	a.controls.quitButton.On().BnClicked(a.quit)
+	a.setupInputUpdates(updates)
+	a.setupPainting()
+	a.setupTray()
+	a.setupShutdown(shutdown)
+	a.window.RunAsMain()
 }
 
-// ShowRunningInstance finds an already-running instance of this app by its
-// window title and brings its window to the foreground. Returns true if a
-// running instance was found.
-func ShowRunningInstance() bool {
-	hwnd, found := win.FindWindow(win.ClassNameNone(), windowTitle)
-	if !found {
-		return false
+func (a *app) quit() {
+	a.quitting = true
+	a.window.Hwnd().PostMessage(co.WM_CLOSE, 0, 0)
+}
+
+// ShowRunningInstance brings an already-running instance's window to the foreground.
+func ShowRunningInstance() {
+	if hwnd, found := win.FindWindow(win.ClassNameNone(), windowTitle); found {
+		show(hwnd)
 	}
+}
+
+func show(hwnd win.HWND) {
 	hwnd.ShowWindow(co.SW_SHOW)
 	hwnd.SetForegroundWindow()
-	return true
+}
+
+func solidBrush(color win.COLORREF) win.HBRUSH {
+	brush, _ := win.CreateBrushIndirect(&win.LOGBRUSH{Style: co.BRS_SOLID, Color: color})
+	return brush
 }
