@@ -1,9 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
+	"slices"
 	"time"
 
 	"github.com/gvidasja/button-box-vjoy-feeder/internal/buttonbox"
@@ -17,8 +19,13 @@ import (
 )
 
 func main() {
+	startMinimized := slices.Contains(os.Args[1:], "--minimized")
+
 	mutex, alreadyRunning, err := acquireSingleInstance()
 	if err != nil || alreadyRunning {
+		if alreadyRunning {
+			ui.ShowRunningInstance()
+		}
 		return
 	}
 	defer windows.CloseHandle(mutex)
@@ -49,7 +56,7 @@ func main() {
 		buttonBoxConsumer.Stop()
 		handbrakeConsumer.Stop()
 		vjoyDevice.Stop()
-	}).Run()
+	}, !startMinimized).Run()
 
 }
 
@@ -75,5 +82,5 @@ func addToStartup(appName, exePath string) error {
 		return err
 	}
 	defer key.Close()
-	return key.SetStringValue(appName, exePath)
+	return key.SetStringValue(appName, fmt.Sprintf(`"%s" --minimized`, exePath))
 }
