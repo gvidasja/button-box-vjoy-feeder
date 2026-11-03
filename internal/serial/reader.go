@@ -7,8 +7,6 @@ import (
 	"log/slog"
 	"sync/atomic"
 	"time"
-
-	"github.com/tarm/serial"
 )
 
 type Handler interface {
@@ -47,7 +45,7 @@ func (c *Consumer) run() {
 	lastErr := ""
 
 	for !c.stopped.Load() {
-		port, err := serial.OpenPort(&serial.Config{Name: portName, Baud: 9600, ReadTimeout: time.Second})
+		port, err := openPort(portName, 9600, time.Second)
 		if err != nil {
 			// log only on change, so an unplugged device doesn't spam the log every second
 			if err.Error() != lastErr {
